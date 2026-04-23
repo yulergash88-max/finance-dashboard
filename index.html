@@ -592,19 +592,23 @@ function setStatus(s) {
 }
 
 function updateFilterOptions() {
-  const fs = document.getElementById('fFirma');
-  const ps = document.getElementById('fProject');
-  const curF = fs.value, curP = ps.value;
-  fs.innerHTML = '<option value="ALL">Barcha firmalar</option>';
-  SETTINGS.firmalar.filter(f=>f.active).forEach(f=>{
-    fs.innerHTML += `<option value="${f.id}">${f.name||f.id}</option>`;
+  // Desktop filtrlar
+  const pairs = [
+    ['fFirma',   'fFirma2',   SETTINGS.firmalar.filter(f=>f.active),
+     '<option value="ALL">Barcha firmalar</option>',
+     f=>`<option value="${f.id}">${f.name||f.id}</option>`],
+    ['fProject', 'fProject2', SETTINGS.proyektlar.filter(p=>p.id&&p.name),
+     '<option value="ALL">Barcha proyektlar</option>',
+     p=>`<option value="${p.id}">${p.name} (${p.firma})</option>`],
+  ];
+  pairs.forEach(([desktopId, mobileId, items, defaultOpt, rowFn])=>{
+    const des = document.getElementById(desktopId);
+    const mob = document.getElementById(mobileId);
+    const curVal = des ? des.value : 'ALL';
+    const html = defaultOpt + items.map(rowFn).join('');
+    if(des){ des.innerHTML = html; des.value = curVal; }
+    if(mob){ mob.innerHTML = html; mob.value = curVal; }
   });
-  fs.value = curF;
-  ps.innerHTML = '<option value="ALL">Barcha proyektlar</option>';
-  SETTINGS.proyektlar.filter(p=>p.id).forEach(p=>{
-    ps.innerHTML += `<option value="${p.id}">${p.name||p.id}</option>`;
-  });
-  ps.value = curP;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -679,8 +683,9 @@ function switchPage(page, el) {
   document.getElementById('page-'+page).classList.add('active');
   if (el) el.classList.add('active');
   currentPage = page;
-  // DK va Hisoblar uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
-  if ((page==='dk'||page==='accounts') && !Object.keys(DATA.osv||{}).length) {
+  // DK, Hisoblar va Balans uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
+  const needsOSV = ['dk','accounts','balance'].includes(page);
+  if (needsOSV && !Object.keys(DATA.osv||{}).length) {
     loadOSV().then(renderCurrent);
   } else {
     renderCurrent();
@@ -715,16 +720,16 @@ function renderPNL() {
   const rev=get('revenue'),gross=get('gross'),ebit=get('ebit'),net=get('net'),cost=get('cost');
 
   document.getElementById('pnl-kpi').innerHTML = [
-    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', click:'pnl_rev' },
-    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', click:'pnl_gross' },
-    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', click:'pnl_ebit' },
-    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', click:'pnl_net' },
-    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', click:'pnl_cost' },
-  ].map(k=>`<div class="kpi-card clickable" onclick="showKpiDetail('${k.click}')">
+    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', click:'pnl_rev', cat:'revenue' },
+    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', click:'pnl_gross', cat:'gross' },
+    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', click:'pnl_ebit', cat:'ebit' },
+    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', click:'pnl_net', cat:'net' },
+    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', click:'pnl_cost', cat:'cost' },
+  ].map(k=>`<div class="kpi-card clickable" onclick="showCategoryDetail('pnl','${k.cat}','${k.label}')">
     <div class="kpi-label">${k.label}</div>
     <div class="kpi-value ${k.c}">${k.val}</div>
     ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
-    <div class="kpi-arrow">↗ Tafsilot</div>
+    <div class="kpi-arrow">↗ Hisoblar</div>
   </div>`).join('');
 
   // Bar chart
@@ -824,9 +829,16 @@ function renderBal() {
   function bsec(title,rows,total){
     let h=`<div class="bal-sec"><div class="bal-sec-title"><span>${title}</span>
       <span class="bal-total ${cls(total)}">${fmt(total,true)}</span></div>
-      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th></tr></thead><tbody>`;
-    rows.forEach(r=>{if(!r.net)return;h+=`<tr><td>${r.category}</td><td class="${cls(r.net)}">${fmt(r.net)}</td></tr>`;});
-    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)}">${fmt(total)}</td></tr></tfoot></table></div>`;
+      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th><th style="width:32px"></th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      if(!r.net)return;
+      h+=`<tr style="cursor:pointer" onclick="showCategoryDetail('bal','${r.category}',${JSON.stringify(r.category)})">
+        <td>${r.category}</td>
+        <td class="${cls(r.net)} r">${fmt(r.net)}</td>
+        <td style="color:var(--muted);font-size:11px;text-align:center">›</td>
+      </tr>`;
+    });
+    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)} r">${fmt(total)}</td><td></td></tr></tfoot></table></div>`;
     return h;
   }
   document.getElementById('bal-sections').innerHTML=
@@ -1228,38 +1240,148 @@ function showIndicatorDetail(key) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function showKpiDetail(key) {
-  const pnl=DATA.pnl; if(!pnl)return;
+// ═══════════════════════════════════════════════════════
+// KATEGORIYA DETAIL MODAL
+// ═══════════════════════════════════════════════════════
+const BAL_ACC_MAP = {
+  'Uzoq muddatli aktivlar':['0100','0110','0130','0130.1','0130.2','0160'],
+  'Amortizatsiya':['0200','0211','0230','0230.1','0230.2','0260'],
+  "Kapital qo'yilmalar":['0800','0820','0820.2'],
+  'TMZ':['1000','1010','1030','1040','1050','1080'],
+  'Tayyor mahsulot':['2800','2810'],
+  'Debitorlar':['4000','4010','4200','4210','4300','4310','4315'],
+  'Soliq aktivlar':['4400','4410','4410.1','4410.3','4410.4','4410.10','4420','4420.1','4430','4450','4460','4490'],
+  "Ijtimoiy sug'urta aktiv":['4500','4510','4510.1'],
+  'Muassislar':['4600','4610'],
+  'Qisqa muddatli invest.':['5800','5810','5810.1'],
+  'Kreditorlar':['6000','6010','6015','6300','6310'],
+  'Soliq maj.':['6400','6410','6410.1','6420','6420.1','6430','6450','6460','6490'],
+  "Ijtimoiy sug'urta maj.":['6500','6510','6510.1','6530','6530.1'],
+  'Xodimlar':['6700','6710'],
+  'Qarz maj.':['6800','6810','6820','6900','6920','6990'],
+  'Uzoq muddatli qarz':['7800','7810'],
+  'Kapital':['8300','8330','8700','8710'],
+};
+const PNL_ACC_MAP = {
+  'revenue':['9000','9010','9010.1','9020','9020.1','9030','9030.1'],
+  'cost':['9100','9110','9110.1','9120','9120.1','9130','9130.1','2000','2010'],
+  'gross':['9000','9010','9020','9030','9100','9110','9120','9130'],
+  'opex':['9400','9420','9430'],
+  'ebit':['9000','9010','9020','9030','9100','9110','9120','9130','9400','9420','9430'],
+  'fin_income':['9500','9540'],'fin_expense':['9600','9610','9620'],
+  'tax':['9800','9810'],'net':['9900','9910'],
+};
+const CF_ACC_MAP = {
+  'operating':['5000','5010','5100','5110','5700'],
+  'investing':['5730','5800','5810'],
+  'financing':['6800','6810','6820','7800','7810'],
+};
+
+function showCategoryDetail(type, cat, label) {
+  document.getElementById('modalTitle').textContent = label;
+  document.getElementById('modalSub').textContent = 'Hisob kodlari bo'yicha tafsilot';
+  document.getElementById('modalOverlay').classList.add('open');
   const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const MNs=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-  const KEY_MAP={pnl_rev:'revenue',pnl_gross:'gross',pnl_ebit:'ebit',pnl_net:'net',pnl_cost:'cost'};
-  const LABELS={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
-    cf_op:'Operatsion CF',cf_inv:'Investitsion CF',cf_fin:'Moliyaviy CF',cf_net:'Net CF'};
-  const pnlKey=KEY_MAP[key];
-  document.getElementById('modalTitle').textContent=LABELS[key]||key;
-  document.getElementById('modalSub').textContent='Oylar bo\'yicha taqsimot';
-  let bodyHtml='';
-  if(pnlKey&&pnl.data){
-    const row=pnl.data.find(x=>x.key===pnlKey);
-    if(row){
-      const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
-      bodyHtml+=`<div class="modal-section"><div class="modal-sec-title">Oylik ko'rinish</div>`;
-      MNs.forEach((mn,i)=>{
-        const mk=MKS[i],v=row.months?.[mk]||0;
-        const w=Math.min(100,Math.abs(v)/maxV*100);
-        bodyHtml+=`<div class="bar-row" style="margin-bottom:8px">
-          <div class="bar-lbl" style="min-width:80px">${mn}</div>
-          <div class="bar-track"><div class="bar-fill ${v>=0?'bf-rev':'bf-net neg'}" style="width:${w}%"></div></div>
-          <div class="bar-val ${cls(v)}">${fmt(v)}</div></div>`;
+  const MNS=['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
+  let html='';
+
+  function accCard(code,name,total,items){
+    let h=`<div style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
+        <div><span style="font-family:var(--mono);color:var(--cyan);font-size:11px;margin-right:8px">${code}</span>
+          <span style="font-size:12px;font-weight:600">${name}</span></div>
+        <span class="${cls(total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(total)}</span>
+      </div>`;
+    items.forEach((it,idx)=>{
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px 7px 28px;${idx<items.length-1?'border-bottom:1px solid var(--border)':''}">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:10px;color:var(--muted)">${idx+1}.</span>
+          <span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:10px">${it.project||'—'}</span>
+          <span style="font-size:10px;color:var(--muted)">${it.firma||''}</span>
+        </div>
+        <span class="${cls(it.total||it.net||0)}" style="font-family:var(--mono);font-size:12px">${fmt(it.total||it.net||0)}</span>
+      </div>`;
+    });
+    return h+'</div>';
+  }
+
+  function getOSVData(codes, valFn) {
+    const osvData=DATA.osv||{}, byCode={};
+    Object.entries(osvData).forEach(([firmaId,osv])=>{
+      if(!osv||osv.error)return;
+      (osv.rows||[]).forEach(row=>{
+        if(!codes.includes(row.code))return;
+        if(!byCode[row.code])byCode[row.code]={code:row.code,name:row.name,items:[],total:0};
+        const val=valFn(row);
+        if(!val&&val!==0)return;
+        byCode[row.code].items.push({project:row.project||'—',firma:firmaId,total:val});
+        byCode[row.code].total+=val;
       });
-      const total=MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0);
-      bodyHtml+=`<div style="text-align:right;padding:12px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(total)}</div></div>`;
+    });
+    return byCode;
+  }
+
+  if(type==='bal'){
+    const byCode=getOSVData(BAL_ACC_MAP[cat]||[],row=>(row.sk_dt||0)-(row.sk_kt||0));
+    if(!Object.keys(byCode).length){
+      html='<div style="padding:20px;text-align:center;color:var(--muted)"><p>Balans ma'lumoti yo'q</p><p style="font-size:11px;margin-top:8px">Avval "Hisoblar" bo'limini bir marta oching — shunda OSV yuklanadi</p></div>';
+    } else {
+      html='<div class="modal-section">'+
+        Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total))
+          .map(g=>accCard(g.code,g.name,g.total,g.items)).join('')+'</div>';
     }
   }
-  document.getElementById('modalBody').innerHTML=bodyHtml||'<p style="color:var(--muted)">Tafsilot yo\'q</p>';
-  document.getElementById('modalOverlay').classList.add('open');
+
+  else if(type==='pnl'){
+    const byCode=getOSVData(PNL_ACC_MAP[cat]||[],row=>{
+      let t=0; MKS.forEach(mn=>{const d=row.months?.[mn]||{dt:0,kt:0};t+=d.dt-d.kt;}); return t;
+    });
+    if(!Object.keys(byCode).length){
+      // OSV yo'q — PNL oylik grafik
+      const row=DATA.pnl?.data?.find(x=>x.key===cat);
+      if(row){
+        const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
+        html='<div class="modal-section"><div class="modal-sec-title">📅 Oylik ko'rinish</div>';
+        MNS.forEach((mn,i)=>{
+          const mk=MKS[i],v=row.months?.[mk]||0; if(!v)return;
+          html+=`<div class="bar-row" style="margin-bottom:6px">
+            <div class="bar-lbl" style="min-width:56px;font-size:10px">${mn}</div>
+            <div class="bar-track"><div class="bar-fill ${v>=0?'bf-rev':'bf-net neg'}" style="width:${Math.min(100,Math.abs(v)/maxV*100)}%"></div></div>
+            <div class="bar-val ${cls(v)}">${fmt(v,true)}</div></div>`;
+        });
+        html+=`<div style="text-align:right;padding:10px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0))}</div></div>`;
+      } else html='<p style="padding:20px;text-align:center;color:var(--muted)">Ma'lumot yo'q</p>';
+    } else {
+      html='<div class="modal-section">'+
+        Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total))
+          .map(g=>accCard(g.code,g.name,g.total,g.items)).join('')+'</div>';
+    }
+  }
+
+  else if(type==='cf'){
+    const sec=DATA.cf?.sections?.find(s=>s.key===cat);
+    if(sec?.accounts?.filter(a=>a.total).length){
+      html='<div class="modal-section">'+
+        sec.accounts.filter(a=>a.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total)).map(acc=>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin-bottom:8px;background:var(--surface2);border-radius:10px">
+            <div><span style="font-family:var(--mono);color:var(--cyan);font-size:11px;margin-right:8px">${acc.code}</span>
+              <span style="font-size:12px">${acc.name}</span></div>
+            <span class="${cls(acc.total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(acc.total)}</span>
+          </div>`).join('')+
+        `<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(sec.total)}</div></div>`;
+    } else html='<p style="padding:24px;text-align:center;color:var(--muted)">Ma'lumot yo'q</p>';
+  }
+
+  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yo'q</p>';
 }
 
+function showKpiDetail(key) {
+  const MAP={pnl_rev:'revenue',pnl_gross:'gross',pnl_ebit:'ebit',pnl_net:'net',pnl_cost:'cost',
+    cf_op:'operating',cf_inv:'investing',cf_fin:'financing',cf_net:'net'};
+  const LABEL={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
+    cf_op:'Operatsion CF',cf_inv:'Investitsion CF',cf_fin:'Moliyaviy CF',cf_net:'Net CF'};
+  showCategoryDetail(key.startsWith('cf')?'cf':'pnl', MAP[key]||key, LABEL[key]||key);
+}
 function closeModal(e) {
   if(!e||e.target===document.getElementById('modalOverlay'))
     document.getElementById('modalOverlay').classList.remove('open');
@@ -1275,8 +1397,11 @@ function toggleFilterDrawer() {
   h.classList.toggle('open',open);
 }
 function syncFilter(fId,tId) {
-  document.getElementById(tId).value=document.getElementById(fId).value;
-  toggleFilterDrawer(); applyFilter();
+  const val = document.getElementById(fId).value;
+  const target = document.getElementById(tId);
+  if(target) target.value = val;
+  // Drawer yopmasdan filter qo'llaymiz
+  applyFilter();
 }
 document.addEventListener('click',e=>{
   const d=document.getElementById('filterDrawer');
