@@ -1,107 +1,1331 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finance Dashboard</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FinDash — Moliyaviy Hisobot</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-body{font-family:Arial;background:#0f172a;color:#fff;margin:0;padding:10px}
-.card{background:#1e293b;padding:15px;margin:10px 0;border-radius:10px}
-h2{margin:0 0 10px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-canvas{background:#fff;border-radius:10px}
+/* ═══════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════ */
+:root{
+  --bg:#0d0f14; --surface:#141720; --surface2:#1c2030;
+  --surface3:#232840; --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.13); --text:#e8eaf0; --muted:#6b7290;
+  --accent:#4f7fff; --accent2:#7c5cfc; --green:#22c55e;
+  --red:#f43f5e; --amber:#f59e0b; --cyan:#06b6d4;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif; --disp:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom,0)}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 60% at 20% 10%,rgba(79,127,255,0.08) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 50% at 80% 80%,rgba(124,92,252,0.06) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* ═══════════════════════════════════════════════════════
+   APP LAYOUT
+═══════════════════════════════════════════════════════ */
+#app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;min-height:100vh;position:relative;z-index:1}
+
+/* iOS Safari: grid fallback */
+@supports not (display:grid){
+  #app{display:flex;flex-direction:column}
+  .topbar{flex-shrink:0}
+  .sidebar{flex-shrink:0}
+  .main{flex:1;overflow-y:auto}
+}
+
+.topbar{
+  grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:0 24px;
+  background:rgba(20,23,32,0.92);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:-webkit-sticky;position:sticky;top:0;z-index:100;
+}
+.logo{font-family:var(--disp);font-size:16px;font-weight:800;letter-spacing:-0.03em;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.tb-div{width:1px;height:24px;background:var(--border2);flex-shrink:0}
+.org-name{font-size:12px;color:var(--muted);font-weight:500}
+.filters{display:flex;align-items:center;gap:8px;margin-left:auto}
+select.fsel{
+  background:var(--surface2);border:1px solid var(--border2);color:var(--text);
+  padding:5px 10px;border-radius:6px;font-size:12px;font-family:var(--sans);
+  cursor:pointer;outline:none;transition:border-color 0.15s;
+}
+select.fsel:focus{border-color:var(--accent)}
+.rf-btn{
+  display:flex;align-items:center;gap:6px;padding:6px 12px;
+  border-radius:6px;border:1px solid var(--border2);background:var(--surface2);
+  color:var(--text);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:var(--sans);
+}
+.rf-btn:hover{background:var(--surface3);border-color:var(--accent)}
+.rf-btn .spin{display:inline-block}
+.rf-btn.loading .spin{animation:spin 0.7s linear infinite}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:all 0.3s}
+.sdot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sdot.err{background:var(--red)}
+.sdot.loading{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.sidebar{
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:16px 0;display:flex;flex-direction:column;gap:2px;
+  position:-webkit-sticky;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.nav-sec{padding:8px 16px 4px;font-size:10px;font-weight:600;color:var(--muted);
+  letter-spacing:0.1em;text-transform:uppercase}
+.nav-it{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;margin:0 8px;
+  border-radius:8px;cursor:pointer;transition:all 0.12s;color:var(--muted);
+  font-size:13px;font-weight:500;
+}
+.nav-it:hover{background:var(--surface2);color:var(--text)}
+.nav-it.active{background:linear-gradient(135deg,rgba(79,127,255,0.15),rgba(124,92,252,0.1));
+  color:var(--accent);border:1px solid rgba(79,127,255,0.2)}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.cache-info{padding:16px;margin-top:auto;font-size:10px;color:var(--muted);border-top:1px solid var(--border)}
+
+.main{padding:24px;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
+.sec-title{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-bottom:4px;
+  background:linear-gradient(135deg,var(--text),var(--muted));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sec-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+
+/* ═══════════════════════════════════════════════════════
+   KPI CARDS
+═══════════════════════════════════════════════════════ */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px;transition:transform 0.15s,border-color 0.15s,box-shadow 0.15s;
+  cursor:default;
+}
+.kpi-card.clickable{cursor:pointer}
+.kpi-card.clickable:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 24px rgba(79,127,255,0.15)}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
+.kpi-value{font-family:var(--mono);font-size:20px;font-weight:500;line-height:1}
+.kpi-note{font-size:10px;color:var(--muted);margin-top:6px}
+.kpi-arrow{font-size:9px;color:var(--accent);margin-top:4px;opacity:0.6}
+.kpi-value.pos{color:var(--green)} .kpi-value.neg{color:var(--red)} .kpi-value.neu{color:var(--accent)}
+
+/* ═══════════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════════ */
+.tw{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.thead-row{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.ttitle{font-family:var(--disp);font-size:14px;font-weight:700;letter-spacing:-0.02em}
+.tbadge{font-size:10px;font-family:var(--mono);background:var(--surface3);padding:3px 8px;border-radius:20px;color:var(--muted)}
+table.ft{width:100%;border-collapse:collapse}
+table.ft thead th{padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:0.06em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+table.ft thead th.r{text-align:right}
+table.ft tbody tr{border-bottom:1px solid var(--border);transition:background 0.08s}
+table.ft tbody tr:last-child{border-bottom:none}
+table.ft tbody tr:hover{background:var(--surface2)}
+table.ft tbody tr.computed{background:rgba(79,127,255,0.04)}
+table.ft tbody tr.computed td{font-weight:600}
+table.ft td{padding:9px 12px;font-size:12px}
+table.ft td.r{text-align:right;font-family:var(--mono);font-size:11px}
+table.ft td.pos{color:var(--green);font-family:var(--mono);text-align:right}
+table.ft td.neg{color:var(--red);font-family:var(--mono);text-align:right}
+table.ft td.mu{color:var(--muted);font-size:11px}
+table.ft tfoot td{border-top:2px solid var(--border2);padding:10px 12px;font-weight:700;font-family:var(--mono);font-size:12px}
+
+/* ═══════════════════════════════════════════════════════
+   BAR CHART
+═══════════════════════════════════════════════════════ */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bar-lbl{font-size:11px;color:var(--muted);min-width:120px;text-align:right}
+.bar-track{flex:1;height:18px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1)}
+.bf-rev{background:linear-gradient(90deg,#4f7fff,#6c8fff)}
+.bf-net.pos{background:linear-gradient(90deg,#22c55e,#4ade80)}
+.bf-net.neg{background:linear-gradient(90deg,#f43f5e,#fb7185)}
+.bar-val{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:72px}
+
+/* ═══════════════════════════════════════════════════════
+   DK BADGES
+═══════════════════════════════════════════════════════ */
+.dk-b{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;font-family:var(--mono)}
+.dk-b.D{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
+.dk-b.K{background:rgba(244,63,94,0.12);color:var(--red);border:1px solid rgba(244,63,94,0.2)}
+.st-b{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px}
+.st-b.o{background:rgba(245,158,11,0.12);color:var(--amber)}
+.st-b.y{background:rgba(34,197,94,0.12);color:var(--green)}
+
+/* ═══════════════════════════════════════════════════════
+   INDICATORS
+═══════════════════════════════════════════════════════ */
+.ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+.ind-group{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.ind-g-title{font-family:var(--disp);font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent)}
+.ind-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 10px;border-radius:8px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background 0.1s;margin-bottom:2px;
+}
+.ind-row:last-child{border-bottom:none;margin-bottom:0}
+.ind-row:hover{background:var(--surface2)}
+.ind-name{font-size:12px;color:var(--text)}
+.ind-note{font-size:10px;color:var(--muted);margin-top:2px}
+.ind-val{font-family:var(--mono);font-size:14px;font-weight:500}
+.ind-caret{font-size:10px;color:var(--muted);margin-left:6px;opacity:0.5}
+
+/* ═══════════════════════════════════════════════════════
+   BALANCE
+═══════════════════════════════════════════════════════ */
+.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.bal-sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.bal-sec-title{padding:12px 16px;font-family:var(--disp);font-size:13px;font-weight:700;
+  border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.bal-total{font-family:var(--mono);font-size:16px;font-weight:600}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL (Ko'rsatkichlar detail)
+═══════════════════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:18px;
+  width:min(680px,95vw);max-height:85vh;overflow-y:auto;
+  box-shadow:0 32px 100px rgba(0,0,0,0.6);
+  animation:modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes modalIn{from{opacity:0;transform:scale(0.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-head{
+  padding:20px 24px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;
+  background:var(--surface);z-index:1;
+}
+.modal-title{font-family:var(--disp);font-size:18px;font-weight:700;letter-spacing:-0.02em}
+.modal-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.modal-close{
+  width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--muted);cursor:pointer;
+  font-size:16px;display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;flex-shrink:0;
+}
+.modal-close:hover{background:var(--red);color:white;border-color:var(--red)}
+.modal-body{padding:24px}
+.modal-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.modal-kpi{background:var(--surface2);border-radius:10px;padding:12px;text-align:center}
+.modal-kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px}
+.modal-kpi-val{font-family:var(--mono);font-size:18px;font-weight:500}
+.modal-section{margin-bottom:18px}
+.modal-sec-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:0.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.modal-gauge{margin-bottom:16px}
+.gauge-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
+.gauge-track{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:4px;transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+.gauge-ok{background:linear-gradient(90deg,var(--green),#4ade80)}
+.gauge-warn{background:linear-gradient(90deg,var(--amber),#fbbf24)}
+.gauge-bad{background:linear-gradient(90deg,var(--red),#fb7185)}
+.modal-formula{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:12px;font-family:var(--mono);font-size:11px;color:var(--cyan);
+  line-height:1.6;margin-bottom:14px;
+}
+.modal-interp{font-size:12px;color:var(--muted);line-height:1.6;padding:10px;
+  background:rgba(79,127,255,0.05);border-radius:8px;border-left:3px solid var(--accent)}
+.modal-trend{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:10px}
+.trend-cell{background:var(--surface2);border-radius:6px;padding:6px;text-align:center}
+.trend-mo{font-size:9px;color:var(--muted)}
+.trend-val{font-family:var(--mono);font-size:11px;margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════
+   ERROR / LOADER
+═══════════════════════════════════════════════════════ */
+.err-box{background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);
+  border-radius:10px;padding:16px;color:var(--red);font-size:12px}
+.page{display:none}.page.active{display:block}
+/* ═══ MOBIL (≤768px) ═══════════════════════════════════════ */
+@media(max-width:768px){
+  /* App layout — sidebar pastda nav bar sifatida */
+  #app{
+    display:flex;flex-direction:column;min-height:100vh;
+    grid-template-columns:unset;grid-template-rows:unset;
+  }
+
+  /* Topbar — kichikroq, faqat logo va hamburger */
+  .topbar{
+    padding:0 12px;gap:8px;height:52px;flex-shrink:0;
+    position:fixed;top:0;left:0;right:0;z-index:200;
+  }
+  .org-name{display:none}
+  .tb-div{display:none}
+
+  /* Filterlar topbarda yashirin — alohida drawer */
+  .filters{display:none}
+
+  /* Hamburger tugma */
+  .hamburger{
+    display:flex;flex-direction:column;gap:4px;
+    width:32px;height:32px;align-items:center;justify-content:center;
+    cursor:pointer;border:1px solid var(--border2);border-radius:8px;
+    background:var(--surface2);flex-shrink:0;margin-left:auto;
+  }
+  .hamburger span{width:16px;height:2px;background:var(--text);border-radius:2px;transition:all 0.2s}
+  .hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
+  .hamburger.open span:nth-child(2){opacity:0}
+  .hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px)}
+
+  /* Sidebar — pastki nav bar */
+  .sidebar{
+    position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;padding-bottom:env(safe-area-inset-bottom,0px);
+    flex-direction:row;padding:6px 4px;border-right:none;
+    border-top:1px solid var(--border2);z-index:200;
+    background:rgba(20,23,32,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    overflow-x:auto;overflow-y:hidden;flex-shrink:0;
+  }
+  .nav-sec,.cache-info{display:none}
+  .nav-it{
+    flex-direction:column;gap:2px;padding:6px 8px;margin:0 2px;
+    min-width:56px;text-align:center;font-size:10px;
+    border-radius:10px;
+  }
+  .nav-it.active{border:1px solid rgba(79,127,255,0.3)}
+  .nav-icon{font-size:20px;width:auto}
+
+  /* Main — topbar va bottombar orasida */
+  .main{
+    margin-top:52px;
+    margin-bottom:calc(68px + env(safe-area-inset-bottom,0px));
+    padding:12px;
+    overflow-y:auto;
+    flex:1;
+    min-height:0;
+  }
+
+  /* Filter drawer */
+  .filter-drawer{
+    position:fixed;top:52px;left:0;right:0;z-index:150;
+    background:rgba(20,23,32,0.98);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border2);padding:12px;
+    display:flex;flex-wrap:wrap;gap:8px;max-height:calc(100vh - 60px);overflow:auto;
+    transform:translateY(-120%);transition:transform 0.25s ease;
+  }
+  .filter-drawer.open{transform:translateY(0)}
+  .filter-drawer select.fsel{flex:1;min-width:140px}
+  .filter-drawer .rf-btn,.filter-drawer .logout-btn{flex-shrink:0}
+
+  /* Refresh va logout — drawer ichida */
+  .topbar .rf-btn,.topbar .logout-btn{display:none}
+
+  /* KPI kartalar — 2 ustun */
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+  .kpi-card{padding:12px}
+  .kpi-value{font-size:16px}
+
+  /* Jadval — horizontal scroll */
+  .tw{overflow-x:auto}
+  table.ft{min-width:500px}
+  table.ft td{padding:7px 8px;font-size:11px}
+  table.ft thead th{padding:7px 8px;font-size:9px}
+
+  /* Balans grid */
+  .bal-grid{grid-template-columns:1fr}
+
+  /* Ind grid */
+  .ind-grid{grid-template-columns:1fr;gap:10px}
+  .ind-row{padding:8px 6px}
+
+  /* Bar chart */
+  .bar-lbl{min-width:60px;font-size:10px}
+  .bar-val{min-width:56px;font-size:10px}
+
+  /* Section title */
+  .sec-title{font-size:18px}
+  .sec-sub{font-size:11px;margin-bottom:12px}
+
+  /* Modal — full screen mobilda */
+  .modal{width:100%;max-height:90vh;border-radius:18px 18px 0 0;margin-top:auto}
+  .modal-overlay{align-items:flex-end}
+  .modal-kpi-row{grid-template-columns:repeat(2,1fr)}
+
+  /* Login box */
+  .login-box{width:calc(100vw - 32px);padding:28px 20px}
+
+  /* DK jadval scroll */
+  #dk-table{overflow-x:auto}
+}
+
+/* Hamburger desktop da yashirin */
+.hamburger{display:none}
+.filter-drawer{display:none}
+@media(max-width:768px){
+  .hamburger{display:flex}
+  .filter-drawer{display:flex}
+}
+@media(min-width:769px){
+  .filter-drawer{display:none !important}
+}
 </style>
 </head>
-
 <body>
 
-<h2>📊 Finance Dashboard</h2>
+<!-- ═══════════════════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════════════════ -->
+<div id="app">
 
-<div class="grid">
-  <div class="card" onclick="showDetail('rev')">
-    💰 Daromad: <span id="rev">0</span>
+<header class="topbar">
+  <div class="logo">📊 FinDash</div>
+  <div class="tb-div"></div>
+  <div class="org-name" id="orgName">Moliyaviy Hisobot Tizimi</div>
+  <div class="filters">
+    <select class="fsel" id="fFirma" onchange="applyFilter()"><option value="ALL">Barcha firmalar</option></select>
+    <select class="fsel" id="fProject" onchange="applyFilter()"><option value="ALL">Barcha proyektlar</option></select>
+    <select class="fsel" id="fYear" onchange="applyFilter()">
+      <option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+    <select class="fsel" id="fMonth" onchange="applyFilter()">
+      <option value="ALL">Barcha oylar</option>
+      <option value="yanv">Yanvar</option><option value="fevr">Fevral</option>
+      <option value="mart">Mart</option><option value="apr">Aprel</option>
+      <option value="may">May</option><option value="iyun">Iyun</option>
+      <option value="iyul">Iyul</option><option value="avg">Avgust</option>
+      <option value="sent">Sentabr</option><option value="okt">Oktabr</option>
+      <option value="noy">Noyabr</option><option value="dek">Dekabr</option>
+    </select>
+    <div class="sdot loading" id="sdot"></div>
+    <button class="rf-btn" id="rfBtn" onclick="loadAll(true)">
+      <span class="spin">↻</span> Yangilash
+    </button>
   </div>
-  <div class="card" onclick="showDetail('exp')">
-    📉 Xarajat: <span id="exp">0</span>
+  <!-- Mobil: hamburger -->
+  <div class="hamburger" id="hamburger" onclick="toggleFilterDrawer()">
+    <span></span><span></span><span></span>
+  </div>
+</header>
+
+<!-- Mobil filter drawer -->
+<div class="filter-drawer" id="filterDrawer">
+  <select class="fsel" id="fFirma2" onchange="syncFilter('fFirma2','fFirma')"><option value="ALL">Barcha firmalar</option></select>
+  <select class="fsel" id="fProject2" onchange="syncFilter('fProject2','fProject')"><option value="ALL">Barcha proyektlar</option></select>
+  <select class="fsel" id="fYear2" onchange="syncFilter('fYear2','fYear')">
+    <option value="2025">2025</option><option value="2024">2024</option>
+  </select>
+  <select class="fsel" id="fMonth2" onchange="syncFilter('fMonth2','fMonth')">
+    <option value="ALL">Barcha oylar</option>
+    <option value="yanv">Yanvar</option><option value="fevr">Fevral</option>
+    <option value="mart">Mart</option><option value="apr">Aprel</option>
+    <option value="may">May</option><option value="iyun">Iyun</option>
+    <option value="iyul">Iyul</option><option value="avg">Avgust</option>
+    <option value="sent">Sentabr</option><option value="okt">Oktabr</option>
+    <option value="noy">Noyabr</option><option value="dek">Dekabr</option>
+  </select>
+  <button class="rf-btn" onclick="loadAll(true);toggleFilterDrawer()">↻ Yangilash</button>
+</div>
+
+<nav class="sidebar">
+  <div class="nav-sec">Hisobotlar</div>
+  <div class="nav-it active" onclick="switchPage('pnl',this)"><span class="nav-icon">📈</span> PNL</div>
+  <div class="nav-it" onclick="switchPage('cashflow',this)"><span class="nav-icon">💸</span> Cash Flow</div>
+  <div class="nav-it" onclick="switchPage('balance',this)"><span class="nav-icon">⚖️</span> Balans</div>
+  <div class="nav-it" onclick="switchPage('dk',this)"><span class="nav-icon">🤝</span> Debitor/Kreditor</div>
+  <div class="nav-it" onclick="switchPage('indicators',this)"><span class="nav-icon">🎯</span> Ko'rsatkichlar</div>
+  <div class="nav-it" onclick="switchPage('accounts',this)"><span class="nav-icon">📒</span> Hisoblar</div>
+  <div class="cache-info" id="cacheInfo">—</div>
+</nav>
+
+<main class="main" id="main">
+  <div class="page active" id="page-pnl">
+    <div class="sec-title">Foyda va Zarar</div>
+    <div class="sec-sub" id="pnl-sub"></div>
+    <div class="kpi-grid" id="pnl-kpi"></div>
+    <div id="pnl-bar"></div>
+    <div class="tw"><div class="thead-row"><div class="ttitle">PNL Tafsiloti</div><div class="tbadge" id="pnl-badge">—</div></div><div id="pnl-table"></div></div>
+  </div>
+
+  <div class="page" id="page-cashflow">
+    <div class="sec-title">Pul Oqimi (Cash Flow)</div>
+    <div class="sec-sub" id="cf-sub"></div>
+    <div class="kpi-grid" id="cf-kpi"></div>
+    <div id="cf-table"></div>
+  </div>
+
+  <div class="page" id="page-balance">
+    <div class="sec-title">Balans</div>
+    <div class="sec-sub" id="bal-sub"></div>
+    <div class="kpi-grid" id="bal-kpi"></div>
+    <div class="bal-grid" id="bal-sections"></div>
+  </div>
+
+  <div class="page" id="page-dk">
+    <div class="sec-title">Debitor / Kreditor</div>
+    <div class="sec-sub" id="dk-sub"></div>
+    <div class="kpi-grid" id="dk-kpi"></div>
+    <div class="tw"><div class="thead-row"><div class="ttitle">Operatsiyalar</div><div class="tbadge" id="dk-badge">—</div></div><div id="dk-table"></div></div>
+  </div>
+
+  <div class="page" id="page-indicators">
+    <div class="sec-title">Moliyaviy Ko'rsatkichlar</div>
+    <div class="sec-sub" id="ind-sub"></div>
+    <div class="kpi-grid" id="ind-kpi"></div>
+    <div class="ind-grid" id="ind-groups"></div>
+  </div>
+  <div class="page" id="page-accounts">
+    <div class="sec-title">Hisoblar ro'yxati</div>
+    <div class="sec-sub" id="acc-sub">Barcha hisoblar — proyekt va detalli ko'rinish</div>
+    <div class="kpi-grid" id="acc-kpi"></div>
+    <div class="tw">
+      <div class="thead-row">
+        <div class="ttitle">Hisoblar</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="accSearch" placeholder="Kod yoki nom..." oninput="filterAccounts()"
+            style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border2);
+            border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;width:180px">
+          <div class="tbadge" id="acc-badge">—</div>
+        </div>
+      </div>
+      <div id="acc-table"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">—</div>
+        <div class="modal-sub" id="modalSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
   </div>
 </div>
-
-<div class="card">
-  📊 Foyda: <span id="profit">0</span>
-</div>
-
-<div class="card">
-  <canvas id="chart"></canvas>
-</div>
-
-<div id="detail" class="card"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+const API = 'https://script.google.com/macros/s/AKfycbzv36VbSRDfPEE2g4uxeNBJSBcCpmrJR-mmKPhiaHgtyFrIBgtv06sUCUXWKbCUwBhUOQ/exec';
 
-// 🔴 ШУНИ ЎЗГАРТИРАСИЗ
-const URL = "https://script.google.com/macros/s/AKfycbyGOhZf9-udC79k36vSt_MT8YPfEGN-WMRqhCV7NFlcvE0f5HUFATg8yWjCO3Duogz15A/exec";
+const CACHE_KEY = 'fd_cache';
+const CACHE_TTL = 10 * 60 * 1000; // 10 daqiqa
 
-let DATA = [];
+let DATA = {};
+let SETTINGS = { firmalar:[], proyektlar:[] };
+let currentPage = 'pnl';
 
-async function loadData(){
-  try{
-    const res = await fetch(URL);
-    DATA = await res.json();
-    calc();
-  }catch(e){
-    alert("Маълумот келмади");
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function fmt(v, short=false) {
+  if (v===null||v===undefined||v==='') return '—';
+  const n = Number(v); if (isNaN(n)) return String(v);
+  if (short) {
+    if (Math.abs(n)>=1e9) return (n/1e9).toFixed(1)+' mlrd';
+    if (Math.abs(n)>=1e6) return (n/1e6).toFixed(1)+' mln';
+    if (Math.abs(n)>=1e3) return (n/1e3).toFixed(0)+' ming';
+    return n.toFixed(0);
+  }
+  return new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+}
+function cls(v) { return Number(v)>0?'pos':Number(v)<0?'neg':'mu'; }
+function pct(v) { return (Number(v)>=0?'+':'')+Number(v).toFixed(1)+'%'; }
+
+// ═══════════════════════════════════════════════════════
+// CACHE
+// ═══════════════════════════════════════════════════════
+// In-memory kesh (localStorage ishlamasa ham ishlaydi)
+const _memCache = {};
+function saveCache(key, data) {
+  _memCache[key] = { t: Date.now(), d: data };
+  try { localStorage.setItem(CACHE_KEY+'_'+key, JSON.stringify({ t: Date.now(), d: data })); } catch {}
+}
+function loadCache(key) {
+  // Avval memory dan
+  if (_memCache[key] && Date.now() - _memCache[key].t < CACHE_TTL) return _memCache[key].d;
+  // Keyin localStorage dan
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY+'_'+key)||'null');
+    if (!c) return null;
+    if (Date.now() - c.t > CACHE_TTL) return null;
+    _memCache[key] = c;
+    return c.d;
+  } catch { return null; }
+}
+function cacheAge(key) {
+  try {
+    const m = _memCache[key]; if(m) return Math.round((Date.now()-m.t)/1000);
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY+'_'+key)||'null');
+    if (!c) return null;
+    return Math.round((Date.now() - c.t) / 1000);
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════
+function callAPI(params) {
+  const url = API + '?' + new URLSearchParams(params).toString();
+  return fetch(url, { cache: 'no-store' }).then(r => r.json());
+}
+
+function getFilters() {
+  return {
+    firma:   document.getElementById('fFirma').value,
+    project: document.getElementById('fProject').value,
+    year:    document.getElementById('fYear').value,
+    month:   document.getElementById('fMonth').value,
+  };
+}
+
+function applyFilter() { loadAll(true); }
+
+function setStatus(s) {
+  document.getElementById('sdot').className = 'sdot ' + s;
+  document.getElementById('rfBtn').classList.toggle('loading', s==='loading');
+}
+
+function updateFilterOptions() {
+  const fs = document.getElementById('fFirma');
+  const ps = document.getElementById('fProject');
+  const curF = fs.value, curP = ps.value;
+  fs.innerHTML = '<option value="ALL">Barcha firmalar</option>';
+  SETTINGS.firmalar.filter(f=>f.active).forEach(f=>{
+    fs.innerHTML += `<option value="${f.id}">${f.name||f.id}</option>`;
+  });
+  fs.value = curF;
+  ps.innerHTML = '<option value="ALL">Barcha proyektlar</option>';
+  SETTINGS.proyektlar.filter(p=>p.id).forEach(p=>{
+    ps.innerHTML += `<option value="${p.id}">${p.name||p.id}</option>`;
+  });
+  ps.value = curP;
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD ALL — BITTA SO'ROV + KESH
+// ═══════════════════════════════════════════════════════
+async function loadAll(forceRefresh=false) {
+  setStatus('loading');
+  const f = getFilters();
+  const cacheKey = JSON.stringify(f);
+
+  // Keshdan olish
+  if (!forceRefresh) {
+    const cached = loadCache(cacheKey);
+    if (cached) {
+      DATA = cached.data;
+      SETTINGS = cached.settings;
+      updateFilterOptions();
+      document.getElementById('orgName').textContent = cached.orgName || 'FinDash';
+      const age = cacheAge(cacheKey);
+      document.getElementById('cacheInfo').textContent = `🟡 Kesh: ${age}s oldin`;
+      renderCurrent(); setStatus('ok'); return;
+    }
+  }
+
+  try {
+    // Settings (bir marta)
+    if (!SETTINGS.firmalar.length || forceRefresh) {
+      const rawS = await callAPI({ action:'settings' }).catch(()=>null);
+      if (rawS && !rawS.error) {
+        SETTINGS = {
+          firmalar:   Array.isArray(rawS.firmalar)   ? rawS.firmalar   : [],
+          proyektlar: Array.isArray(rawS.proyektlar) ? rawS.proyektlar : [],
+          mapping:    Array.isArray(rawS.mapping)    ? rawS.mapping    : [],
+        };
+        updateFilterOptions();
+        const active = SETTINGS.firmalar.filter(f=>f.active);
+        if (active.length) document.getElementById('orgName').textContent = active.map(f=>f.short||f.id).join(' | ');
+      }
+    }
+
+    // BITTA so'rov bilan barcha hisobotlar
+    const raw = await callAPI({ action:'all', ...f });
+    if (raw.error) { showErr(raw.error); setStatus('err'); return; }
+
+    DATA = {
+      pnl: raw.pnl        || { error:'PNL yuklanmadi' },
+      cf:  raw.cashflow   || { error:'CF yuklanmadi' },
+      bal: raw.balance    || { error:'Balans yuklanmadi' },
+      dk:  { rows:[] },   // DK endi OSV dan (4000-6999 hisoblar)
+      ind: raw.indicators || { indicators:[] },
+      osv: raw.osv        || {},
+    };
+
+    // Keshga saqlash
+    const orgName = document.getElementById('orgName').textContent;
+    saveCache(cacheKey, { data: DATA, settings: SETTINGS, orgName });
+    document.getElementById('cacheInfo').textContent = `🟢 Yangilandi: ${new Date().toLocaleTimeString('uz')}`;
+
+    renderCurrent(); setStatus('ok');
+  } catch(e) {
+    setStatus('err');
+    showSetupGuide(e.message);
   }
 }
 
-function calc(){
-
-  let rev=0, exp=0;
-
-  DATA.forEach(r=>{
-    if(r.acc.startsWith("90")) rev += r.kr_end;
-    if(r.acc.startsWith("20")) exp += r.db_end;
-  });
-
-  document.getElementById("rev").innerText = rev.toLocaleString();
-  document.getElementById("exp").innerText = exp.toLocaleString();
-  document.getElementById("profit").innerText = (rev-exp).toLocaleString();
-
-  drawChart(rev,exp);
+// ═══════════════════════════════════════════════════════
+// PAGE SWITCH
+// ═══════════════════════════════════════════════════════
+function switchPage(page, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-it').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (el) el.classList.add('active');
+  currentPage = page;
+  // DK va Hisoblar uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
+  if ((page==='dk'||page==='accounts') && !Object.keys(DATA.osv||{}).length) {
+    loadOSV().then(renderCurrent);
+  } else {
+    renderCurrent();
+  }
 }
 
-function drawChart(rev,exp){
-  new Chart(document.getElementById("chart"), {
-    type: 'bar',
-    data: {
-      labels: ["Daromad","Xarajat"],
-      datasets: [{
-        data: [rev,exp]
-      }]
-    }
-  });
+async function loadOSV() {
+  const f = getFilters();
+  setStatus('loading');
+  try {
+    const raw = await callAPI({ action:'osv_all', year:f.year });
+    if (raw && raw.osv) DATA.osv = raw.osv;
+  } catch(e) {}
+  setStatus('ok');
+}
+function renderCurrent() {
+  if (!DATA.pnl) return;
+  const renders = { pnl:renderPNL, cashflow:renderCF, balance:renderBal, dk:renderDK, indicators:renderInd, accounts:renderAccounts };
+  if (renders[currentPage]) renders[currentPage]();
 }
 
-function showDetail(type){
-  let html = "<h3>Detal</h3>";
+// ═══════════════════════════════════════════════════════
+// PNL
+// ═══════════════════════════════════════════════════════
+function renderPNL() {
+  const d = DATA.pnl; if (!d||d.error){showErrIn('pnl-table',d?.error);return;}
+  const f = getFilters();
+  document.getElementById('pnl-sub').textContent =
+    `PNL — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year} | ${f.month==='ALL'?'Yil jami':'Oy: '+f.month}`;
 
-  DATA.forEach(r=>{
-    if(type=="rev" && r.acc.startsWith("90")){
-      html += `<p>${r.project}: ${r.kr_end}</p>`;
-    }
-    if(type=="exp" && r.acc.startsWith("20")){
-      html += `<p>${r.project}: ${r.db_end}</p>`;
-    }
+  const get = k => d.data?.find(x=>x.key===k)?.total||0;
+  const rev=get('revenue'),gross=get('gross'),ebit=get('ebit'),net=get('net'),cost=get('cost');
+
+  document.getElementById('pnl-kpi').innerHTML = [
+    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', click:'pnl_rev' },
+    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', click:'pnl_gross' },
+    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', click:'pnl_ebit' },
+    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', click:'pnl_net' },
+    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', click:'pnl_cost' },
+  ].map(k=>`<div class="kpi-card clickable" onclick="showKpiDetail('${k.click}')">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div>
+    ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
+    <div class="kpi-arrow">↗ Tafsilot</div>
+  </div>`).join('');
+
+  // Bar chart
+  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const months = d.months||[];
+  if (f.month==='ALL'&&months.length>1) {
+    const maxV = Math.max(...MKS.map(mk=>Math.abs(d.data?.find(x=>x.key==='revenue')?.months?.[mk]||0)),1);
+    let bh='<div class="tw" style="padding:16px;margin-bottom:16px"><div class="ttitle" style="margin-bottom:12px">📊 Oylik ko\'rsatkichlar</div>';
+    months.forEach((mn,i)=>{
+      const mk=MKS[i];
+      const rv=d.data?.find(x=>x.key==='revenue')?.months?.[mk]||0;
+      const nt=d.data?.find(x=>x.key==='net')?.months?.[mk]||0;
+      bh+=`<div class="bar-row"><div class="bar-lbl">${mn}</div>
+        <div class="bar-track"><div class="bar-fill bf-rev" style="width:${Math.min(100,Math.abs(rv)/maxV*100)}%"></div></div>
+        <div class="bar-val">${fmt(rv,true)}</div></div>
+        <div class="bar-row" style="margin-top:-2px;margin-bottom:8px">
+        <div class="bar-lbl" style="font-size:10px">Sof</div>
+        <div class="bar-track" style="height:7px"><div class="bar-fill bf-net ${nt>=0?'pos':'neg'}" style="width:${Math.min(100,Math.abs(nt)/maxV*100)}%"></div></div>
+        <div class="bar-val ${cls(nt)}">${fmt(nt,true)}</div></div>`;
+    });
+    document.getElementById('pnl-bar').innerHTML = bh+'</div>';
+  } else { document.getElementById('pnl-bar').innerHTML=''; }
+
+  document.getElementById('pnl-badge').textContent = `${d.data?.length||0} qator`;
+  const MKS2=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  let html=`<table class="ft"><thead><tr><th>Ko'rsatkich</th>`;
+  if (f.month==='ALL') months.forEach(m=>{html+=`<th class="r">${m}</th>`;});
+  html+=`<th class="r">Jami</th></tr></thead><tbody>`;
+  (d.data||[]).forEach(row=>{
+    html+=`<tr class="${row.computed?'computed':''}"><td>${row.label}</td>`;
+    if (f.month==='ALL') MKS2.forEach(mk=>{
+      const v=row.months?.[mk]||0;
+      html+=`<td class="${cls(v)}">${v?fmt(v):'—'}</td>`;
+    });
+    html+=`<td class="${cls(row.total)}">${fmt(row.total)}</td></tr>`;
   });
-
-  document.getElementById("detail").innerHTML = html;
+  document.getElementById('pnl-table').innerHTML=html+'</tbody></table>';
 }
 
-loadData();
+// ═══════════════════════════════════════════════════════
+// CASH FLOW
+// ═══════════════════════════════════════════════════════
+function renderCF() {
+  const d=DATA.cf; if(!d||d.error){showErrIn('cf-table',d?.error);return;}
+  const f=getFilters();
+  document.getElementById('cf-sub').textContent=`CashFlow — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  const secs=d.sections||[];
+  const opCF=secs.find(s=>s.key==='operating')?.total||0;
+  const invCF=secs.find(s=>s.key==='investing')?.total||0;
+  const finCF=secs.find(s=>s.key==='financing')?.total||0;
+  const netCF=d.netTotal||0;
 
+  document.getElementById('cf-kpi').innerHTML=[
+    {label:'Operatsion CF',val:fmt(opCF,true),c:cls(opCF),note:'Asosiy faoliyat',click:'cf_op'},
+    {label:'Investitsion CF',val:fmt(invCF,true),c:cls(invCF),note:'Investitsiyalar',click:'cf_inv'},
+    {label:'Moliyaviy CF',val:fmt(finCF,true),c:cls(finCF),note:'Kreditlar',click:'cf_fin'},
+    {label:'Net CF',val:fmt(netCF,true),c:cls(netCF),note:'Jami o\'zgarish',click:'cf_net'},
+  ].map(k=>`<div class="kpi-card clickable" onclick="showKpiDetail('${k.click}')">
+    <div class="kpi-label">${k.label}</div><div class="kpi-value ${k.c}">${k.val}</div>
+    <div class="kpi-note">${k.note}</div><div class="kpi-arrow">↗ Tafsilot</div>
+  </div>`).join('');
+
+  let html='';
+  secs.forEach(sec=>{
+    html+=`<div class="tw" style="margin-bottom:16px">
+      <div class="thead-row"><div class="ttitle">${sec.label}</div>
+      <div class="tbadge ${cls(sec.total)}">${fmt(sec.total,true)}</div></div>
+      <table class="ft"><thead><tr><th>Hisob</th><th class="r">Kod</th><th class="r">Summa</th></tr></thead><tbody>`;
+    (sec.accounts||[]).forEach(acc=>{
+      const t=Object.values(acc.months||{}).reduce((s,v)=>s+v,0);
+      if(!t)return;
+      html+=`<tr><td>${acc.name}</td><td class="mu">${acc.code}</td><td class="${cls(t)}">${fmt(t)}</td></tr>`;
+    });
+    html+=`</tbody><tfoot><tr><td colspan="2"><b>Jami</b></td><td class="${cls(sec.total)}">${fmt(sec.total)}</td></tr></tfoot></table></div>`;
+  });
+  html+=`<div class="tw"><div class="thead-row"><div class="ttitle" style="font-size:16px">Sof pul oqimi</div>
+    <div class="kpi-value ${cls(netCF)}" style="font-size:18px">${fmt(netCF)}</div></div></div>`;
+  document.getElementById('cf-table').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════
+// BALANS
+// ═══════════════════════════════════════════════════════
+function renderBal() {
+  const d=DATA.bal; if(!d||d.error){showErrIn('bal-sections',d?.error);return;}
+  const f=getFilters();
+  document.getElementById('bal-sub').textContent=`Balans — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year} yil oxiri`;
+  const cap=(d.passive||[]).find(p=>p.category==='Kapital')?.net||0;
+  document.getElementById('bal-kpi').innerHTML=[
+    {label:'Jami Aktiv',val:fmt(d.totalActive,true),c:'neu',note:'Barcha aktivlar'},
+    {label:'Jami Passiv',val:fmt(d.totalPassive,true),c:'neu',note:'Majburiyat+kapital'},
+    {label:'Tenglik',val:d.balanced?'✓ Tenglik':'⚠ Farq',c:d.balanced?'pos':'neg',note:d.balanced?'A=P':'Tekshiring'},
+    {label:'Kapital',val:fmt(cap,true),c:'pos',note:'O\'z mablag\'lari'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
+
+  function bsec(title,rows,total){
+    let h=`<div class="bal-sec"><div class="bal-sec-title"><span>${title}</span>
+      <span class="bal-total ${cls(total)}">${fmt(total,true)}</span></div>
+      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th></tr></thead><tbody>`;
+    rows.forEach(r=>{if(!r.net)return;h+=`<tr><td>${r.category}</td><td class="${cls(r.net)}">${fmt(r.net)}</td></tr>`;});
+    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)}">${fmt(total)}</td></tr></tfoot></table></div>`;
+    return h;
+  }
+  document.getElementById('bal-sections').innerHTML=
+    bsec('⬆️ AKTIV',d.active||[],d.totalActive)+bsec('⬇️ PASSIV',d.passive||[],d.totalPassive);
+}
+
+// ═══════════════════════════════════════════════════════
+// DEBITOR/KREDITOR
+// ═══════════════════════════════════════════════════════
+function renderDK() {
+  const f=getFilters();
+  const osvData=DATA.osv||{};
+  document.getElementById('dk-sub').textContent=
+    `Debitor va Kreditor hisoblar | ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+
+  // Aniq guruhlar
+  const GROUPS = [
+    {
+      id:'xaridorlar',
+      label:'🛒 Xaridorlar va buyurtmachilar',
+      deb:['4010','4000'],
+      kred:['6310','6300']
+    },
+    {
+      id:'yetkazib',
+      label:'🚚 Yetkazib beruvchilar va pudratchilar',
+      deb:['4310','4300','4315'],
+      kred:['6010','6000','6015']
+    },
+    {
+      id:'moliyaviy',
+      label:'💰 Moliyaviy yordam (kreditlar va qarzlar)',
+      deb:['5820','5800','5810'],
+      kred:['6820','6800','6810','7810','7800']
+    },
+    {
+      id:'boshqa',
+      label:'📋 Boshqa debitor va kreditorlar',
+      deb:['4200','4210','4600','4610'],
+      kred:['6700','6710','6900','6920','6990']
+    },
+  ];
+
+  // OSV dan barcha hisoblarni yig'ish
+  const accData = {}; // code -> {name, project, firma, sn_dt, sn_kt, sk_dt, sk_kt}
+  Object.entries(osvData).forEach(([firmaId, osv]) => {
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
+    (osv.rows||[]).forEach(row => {
+      if(f.project!=='ALL'&&row.project!==f.project)return;
+      const key = row.code+'|'+firmaId+'|'+(row.project||'');
+      if(!accData[key]) accData[key]={
+        code:row.code, name:row.name, project:row.project||'—',
+        firma:firmaId, sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0
+      };
+      accData[key].sn_dt+=row.sn_dt||0; accData[key].sn_kt+=row.sn_kt||0;
+      accData[key].sk_dt+=row.sk_dt||0; accData[key].sk_kt+=row.sk_kt||0;
+    });
+  });
+  const allRows = Object.values(accData);
+
+  // Guruh bo'yicha ajratish
+  let totalDeb=0, totalKred=0, totalGrupsHtml='';
+
+  GROUPS.forEach(grp => {
+    const debRows = allRows.filter(r => grp.deb.includes(r.code) && (r.sk_dt||r.sk_kt||r.sn_dt||r.sn_kt));
+    const kredRows = allRows.filter(r => grp.kred.includes(r.code) && (r.sk_dt||r.sk_kt||r.sn_dt||r.sn_kt));
+    if(!debRows.length && !kredRows.length) return;
+
+    const grpDebTotal  = debRows.reduce((s,r)=>s+Math.max(0,(r.sk_dt||0)-(r.sk_kt||0)),0);
+    const grpKredTotal = kredRows.reduce((s,r)=>s+Math.max(0,(r.sk_kt||0)-(r.sk_dt||0)),0);
+    totalDeb  += grpDebTotal;
+    totalKred += grpKredTotal;
+
+    const buildRows = (rows, isDeb) => rows.map(r => {
+      const net = (r.sk_dt||0)-(r.sk_kt||0);
+      return `<tr>
+        <td style="font-family:var(--mono);color:var(--cyan);font-size:11px">${r.code}</td>
+        <td>${r.name}</td>
+        <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);
+          padding:1px 6px;border-radius:4px;font-size:10px">${r.project}</span></td>
+        <td class="mu" style="font-size:11px">${r.firma}</td>
+        <td class="r">${r.sn_dt?fmt(r.sn_dt):'—'}</td>
+        <td class="r">${r.sn_kt?fmt(r.sn_kt):'—'}</td>
+        <td class="r">${r.sk_dt?fmt(r.sk_dt):'—'}</td>
+        <td class="r">${r.sk_kt?fmt(r.sk_kt):'—'}</td>
+        <td class="${cls(net)} r"><b>${fmt(Math.abs(net))}</b></td>
+      </tr>`;
+    }).join('');
+
+    totalGrupsHtml += `
+    <div class="tw" style="margin-bottom:16px">
+      <div class="thead-row">
+        <div class="ttitle">${grp.label}</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          ${grpDebTotal?`<span style="color:var(--green);font-family:var(--mono);font-size:12px">Deb: ${fmt(grpDebTotal,true)}</span>`:''}
+          ${grpKredTotal?`<span style="color:var(--red);font-family:var(--mono);font-size:12px">Kred: ${fmt(grpKredTotal,true)}</span>`:''}
+        </div>
+      </div>
+      <table class="ft"><thead><tr>
+        <th>Kod</th><th>Nomi</th><th>Proyekt</th><th>Firma</th>
+        <th class="r">SN Дт</th><th class="r">SN Кт</th>
+        <th class="r">SK Дт</th><th class="r">SK Кт</th>
+        <th class="r">Saldo</th>
+      </tr></thead><tbody>
+      ${debRows.length ? `<tr><td colspan="9" style="background:rgba(34,197,94,0.06);color:var(--green);font-size:10px;font-weight:700;padding:5px 12px;letter-spacing:0.06em">DEBITORLAR</td></tr>${buildRows(debRows,true)}` : ''}
+      ${kredRows.length ? `<tr><td colspan="9" style="background:rgba(244,63,94,0.06);color:var(--red);font-size:10px;font-weight:700;padding:5px 12px;letter-spacing:0.06em">KREDITORLAR</td></tr>${buildRows(kredRows,false)}` : ''}
+      </tbody></table>
+    </div>`;
+  });
+
+  // KPI
+  document.getElementById('dk-badge').textContent = `${allRows.length} ta`;
+  document.getElementById('dk-kpi').innerHTML=[
+    {label:'Jami debitorlar',val:fmt(totalDeb,true),c:'pos',note:'Bizga qarzdorlar'},
+    {label:'Jami kreditorlar',val:fmt(totalKred,true),c:'neg',note:'Biz qarzdormiz'},
+    {label:'Sof pozitsiya',val:fmt(totalDeb-totalKred,true),c:cls(totalDeb-totalKred),note:'Deb − Kred'},
+    {label:'Jami hisoblar',val:allRows.length,c:'neu',note:'OSV dan'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
+
+  document.getElementById('dk-table').innerHTML = totalGrupsHtml ||
+    `<p style="padding:24px;text-align:center;color:var(--muted)">OSV da 4xxx/6xxx hisoblar bo'yicha ma'lumot yo'q</p>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// INDICATORS
+// ═══════════════════════════════════════════════════════
+function renderInd() {
+  const d=DATA.ind; if(!d||d.error){showErrIn('ind-groups',d?.error);return;}
+  const f=getFilters(), s=d.summary||{};
+  document.getElementById('ind-sub').textContent=`Ko'rsatkichlar — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  document.getElementById('ind-kpi').innerHTML=[
+    {label:'Daromad',val:fmt(s.revenue,true),c:'neu'},
+    {label:'Yalpi foyda',val:fmt(s.gross,true),c:cls(s.gross)},
+    {label:'EBITDA',val:fmt(s.ebitda,true),c:cls(s.ebitda)},
+    {label:'Sof foyda',val:fmt(s.net,true),c:cls(s.net)},
+    {label:'Kapital',val:fmt(s.capital,true),c:'pos'},
+    {label:'Qarz',val:fmt(s.debt,true),c:'neg'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div></div>`).join('');
+  let html='';
+  (d.indicators||[]).forEach(grp=>{
+    html+=`<div class="ind-group"><div class="ind-g-title">${grp.group}</div>`;
+    grp.items.forEach(item=>{
+      const vNum=parseFloat(item.value), vc=isNaN(vNum)?'':vNum>0?'pos':vNum<0?'neg':'';
+      const iKey=`${grp.group}::${item.name}`;
+      html+=`<div class="ind-row" onclick="showIndicatorDetail(${JSON.stringify(iKey)})">
+        <div><div class="ind-name">${item.name}</div><div class="kpi-note">${item.note||''}</div></div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="ind-val ${vc}">${item.value}</div><span class="ind-caret">›</span>
+        </div></div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('ind-groups').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════
+// HISOBLAR SAHIFASI
+// ═══════════════════════════════════════════════════════
+let ALL_ACCOUNTS=[];
+function renderAccounts() {
+  const f=getFilters();
+  document.getElementById('acc-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  const osvData=DATA.osv||{};
+  ALL_ACCOUNTS=[];
+  const accMap={};
+  const MONTHS_K=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  Object.entries(osvData).forEach(([firmaId,osv])=>{
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
+    (osv.rows||[]).forEach(row=>{
+      if(f.project!=='ALL'&&row.project!==f.project)return;
+      if(!accMap[row.code])accMap[row.code]={code:row.code,name:row.name,
+        sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,projects:{}};
+      const a=accMap[row.code];
+      a.sn_dt+=row.sn_dt||0;a.sn_kt+=row.sn_kt||0;
+      a.sk_dt+=row.sk_dt||0;a.sk_kt+=row.sk_kt||0;
+      if(!a.projects[row.project])a.projects[row.project]={dt:0,kt:0};
+      MONTHS_K.forEach(mn=>{
+        const d=row.months?.[mn]||{dt:0,kt:0};
+        a.total_dt+=d.dt;a.total_kt+=d.kt;
+        a.projects[row.project].dt+=d.dt;a.projects[row.project].kt+=d.kt;
+      });
+    });
+  });
+  ALL_ACCOUNTS=Object.values(accMap);
+  const withData=ALL_ACCOUNTS.filter(a=>a.total_dt||a.total_kt||a.sn_dt||a.sn_kt||a.sk_dt||a.sk_kt);
+  const totalDt=ALL_ACCOUNTS.reduce((s,a)=>s+a.total_dt,0);
+  const totalKt=ALL_ACCOUNTS.reduce((s,a)=>s+a.total_kt,0);
+  document.getElementById('acc-kpi').innerHTML=[
+    {label:'Jami hisoblar',val:ALL_ACCOUNTS.length,c:'neu',note:'Barcha счётlar'},
+    {label:'Faol hisoblar',val:withData.length,c:'pos',note:'Oborot bor'},
+    {label:'Jami Дт oborot',val:fmt(totalDt,true),c:'neu',note:'Barcha debet'},
+    {label:'Jami Кт oborot',val:fmt(totalKt,true),c:'neu',note:'Barcha kredit'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
+  document.getElementById('acc-badge').textContent=`${ALL_ACCOUNTS.length} ta`;
+  buildAccountTable(ALL_ACCOUNTS);
+}
+
+function buildAccountTable(accounts) {
+  if(!accounts.length){
+    document.getElementById('acc-table').innerHTML='<p style="padding:24px;color:var(--muted);text-align:center">Ma\'lumot yuklanmadi</p>';return;
+  }
+  let html=`<table class="ft"><thead><tr>
+    <th>Kod</th><th>Hisob nomi</th><th>Proyektlar</th>
+    <th class="r">SN Дт</th><th class="r">SN Кт</th>
+    <th class="r">Oborot Дт</th><th class="r">Oborot Кт</th>
+    <th class="r">SK Дт</th><th class="r">SK Кт</th>
+    <th style="width:60px"></th></tr></thead><tbody>`;
+  accounts.forEach(acc=>{
+    const hasData=acc.total_dt||acc.total_kt||acc.sn_dt||acc.sn_kt;
+    const projNames=Object.entries(acc.projects).filter(([,p])=>p.dt||p.kt)
+      .map(([pid])=>`<span style="background:rgba(79,127,255,0.1);color:var(--accent);
+        padding:1px 6px;border-radius:4px;font-size:10px;margin-right:3px">${pid}</span>`).join('');
+    html+=`<tr data-code="${acc.code}" data-name="${acc.name.toLowerCase()}"
+      style="${!hasData?'opacity:0.35':''}">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--cyan)">${acc.code}</td>
+      <td style="max-width:220px">${acc.name}</td>
+      <td>${projNames||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+      <td class="${acc.sn_dt?'pos':''} r">${acc.sn_dt?fmt(acc.sn_dt):'—'}</td>
+      <td class="${acc.sn_kt?'neg':''} r">${acc.sn_kt?fmt(acc.sn_kt):'—'}</td>
+      <td class="r">${acc.total_dt?fmt(acc.total_dt):'—'}</td>
+      <td class="r">${acc.total_kt?fmt(acc.total_kt):'—'}</td>
+      <td class="${acc.sk_dt?'pos':''} r">${acc.sk_dt?fmt(acc.sk_dt):'—'}</td>
+      <td class="${acc.sk_kt?'neg':''} r">${acc.sk_kt?fmt(acc.sk_kt):'—'}</td>
+      <td><button onclick="showAccountDetail('${acc.code}')"
+        style="padding:4px 10px;background:var(--surface3);border:1px solid var(--border2);
+        border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer;white-space:nowrap">
+        ↗ Detail</button></td></tr>`;
+  });
+  document.getElementById('acc-table').innerHTML=html+'</tbody></table>';
+}
+
+function filterAccounts() {
+  const q=document.getElementById('accSearch').value.toLowerCase().trim();
+  const rows=document.querySelectorAll('#acc-table tbody tr[data-code]');
+  let vis=0;
+  rows.forEach(tr=>{
+    const show=!q||tr.dataset.code.includes(q)||tr.dataset.name.includes(q);
+    tr.style.display=show?'':'none'; if(show)vis++;
+  });
+  document.getElementById('acc-badge').textContent=`${vis} ta`;
+}
+
+// ═══════════════════════════════════════════════════════
+// HISOB DETAIL MODAL
+// ═══════════════════════════════════════════════════════
+async function showAccountDetail(code) {
+  const acc=ALL_ACCOUNTS.find(a=>a.code===code);
+  if(!acc)return;
+  document.getElementById('modalTitle').textContent=`${code} — ${acc.name}`;
+  document.getElementById('modalSub').textContent='Proyekt va oylar bo\'yicha taqsimot';
+  document.getElementById('modalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Yuklanmoqda...</div>';
+  document.getElementById('modalOverlay').classList.add('open');
+  const f=getFilters();
+  let detail=null;
+  try { detail=await callAPI({action:'account',code,firma:f.firma,year:f.year,project:f.project}); } catch(e) {}
+  if(!detail||detail.error) detail=buildDetailFromOSV(code,f);
+  renderAccountModal(detail,acc);
+}
+
+function buildDetailFromOSV(code,f) {
+  const MONTHS_K=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const MO_RU=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+  const osvData=DATA.osv||{};
+  const res={code,year:f.year,firma:f.firma,name:'',sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,
+    total_dt:0,total_kt:0,byMonth:{},byProject:{},firms:[],months_labels:MO_RU,months_keys:MONTHS_K};
+  MONTHS_K.forEach(mn=>{res.byMonth[mn]={dt:0,kt:0};});
+  Object.entries(osvData).forEach(([firmaId,osv])=>{
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
+    const mr=(osv.rows||[]).filter(r=>r.code===code&&(f.project==='ALL'||r.project===f.project));
+    if(!mr.length)return;
+    if(!res.name)res.name=mr[0].name;
+    const fe={firmaId,firmaName:osv.firmName||firmaId,projects:[]};
+    const pa={};
+    mr.forEach(row=>{
+      res.sn_dt+=row.sn_dt||0;res.sn_kt+=row.sn_kt||0;
+      res.sk_dt+=row.sk_dt||0;res.sk_kt+=row.sk_kt||0;
+      if(!pa[row.project])pa[row.project]={dt:0,kt:0,months:{}};
+      MONTHS_K.forEach(mn=>{
+        const d=row.months?.[mn]||{dt:0,kt:0};
+        res.byMonth[mn].dt+=d.dt;res.byMonth[mn].kt+=d.kt;
+        res.total_dt+=d.dt;res.total_kt+=d.kt;
+        if(!pa[row.project].months[mn])pa[row.project].months[mn]={dt:0,kt:0};
+        pa[row.project].months[mn].dt+=d.dt;pa[row.project].months[mn].kt+=d.kt;
+        pa[row.project].dt+=d.dt;pa[row.project].kt+=d.kt;
+      });
+    });
+    Object.entries(pa).forEach(([pid,pd])=>{
+      fe.projects.push({pid,pname:pid,total_dt:pd.dt,total_kt:pd.kt,months:pd.months});
+      if(!res.byProject[pid])res.byProject[pid]={name:pid,dt:0,kt:0};
+      res.byProject[pid].dt+=pd.dt;res.byProject[pid].kt+=pd.kt;
+    });
+    res.firms.push(fe);
+  });
+  return res;
+}
+
+function renderAccountModal(d) {
+  const MONTHS_K=d.months_keys||['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const MO_RU=d.months_labels||['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
+  const net_sn=(d.sn_dt||0)-(d.sn_kt||0), net_sk=(d.sk_dt||0)-(d.sk_kt||0);
+  let html=`<div class="modal-kpi-row">
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo boshlanish</div>
+      <div class="modal-kpi-val ${cls(net_sn)}">${fmt(net_sn)}</div></div>
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Оборот Дт / Кт</div>
+      <div class="modal-kpi-val" style="font-size:13px">
+        <span style="color:var(--accent)">${fmt(d.total_dt,true)}</span>
+        <span style="color:var(--muted)"> / </span>
+        <span style="color:var(--red)">${fmt(d.total_kt,true)}</span></div></div>
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo oxiri</div>
+      <div class="modal-kpi-val ${cls(net_sk)}">${fmt(net_sk)}</div></div>
+  </div>`;
+  const projEntries=Object.entries(d.byProject||{}).filter(([,p])=>p.dt||p.kt);
+  if(projEntries.length){
+    html+=`<div class="modal-section"><div class="modal-sec-title">📁 Proyektlar bo'yicha</div>
+      <table class="ft"><thead><tr><th>Proyekt</th><th class="r">Дт</th><th class="r">Кт</th><th class="r">Farq</th></tr></thead><tbody>`;
+    projEntries.forEach(([pid,p])=>{
+      const diff=p.dt-p.kt;
+      html+=`<tr><td><span style="background:rgba(79,127,255,0.1);color:var(--accent);
+        padding:2px 8px;border-radius:4px;font-size:11px">${p.name||pid}</span></td>
+        <td class="r" style="color:var(--accent)">${fmt(p.dt)}</td>
+        <td class="r" style="color:var(--red)">${fmt(p.kt)}</td>
+        <td class="${cls(diff)} r">${fmt(diff)}</td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  }
+  const mWithData=MONTHS_K.filter(mn=>(d.byMonth[mn]?.dt||0)+(d.byMonth[mn]?.kt||0)>0);
+  if(mWithData.length){
+    const maxV=Math.max(...MONTHS_K.map(mn=>Math.max(d.byMonth[mn]?.dt||0,d.byMonth[mn]?.kt||0)),1);
+    html+=`<div class="modal-section"><div class="modal-sec-title">📅 Oylar bo'yicha</div>
+      <table class="ft"><thead><tr><th>Oy</th><th class="r">Дт</th><th class="r">Кт</th><th style="width:100px">Grafik</th></tr></thead><tbody>`;
+    MONTHS_K.forEach((mn,i)=>{
+      const dt=d.byMonth[mn]?.dt||0,kt=d.byMonth[mn]?.kt||0;
+      if(!dt&&!kt)return;
+      html+=`<tr><td>${MO_RU[i]}</td>
+        <td class="r" style="color:var(--accent)">${dt?fmt(dt):'—'}</td>
+        <td class="r" style="color:var(--red)">${kt?fmt(kt):'—'}</td>
+        <td><div style="display:flex;flex-direction:column;gap:2px">
+          ${dt?`<div style="height:5px;width:${Math.min(100,dt/maxV*90)}%;background:var(--accent);border-radius:2px;opacity:0.7"></div>`:''}
+          ${kt?`<div style="height:5px;width:${Math.min(100,kt/maxV*90)}%;background:var(--red);border-radius:2px;opacity:0.7"></div>`:''}
+        </div></td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  }
+  if(!projEntries.length&&!mWithData.length)
+    html+='<p style="padding:20px;text-align:center;color:var(--muted)">Bu hisob bo\'yicha oborot yo\'q</p>';
+  document.getElementById('modalBody').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════
+// INDICATOR DETAIL MODAL
+// ═══════════════════════════════════════════════════════
+function showIndicatorDetail(key) {
+  const [group,name]=key.split('::');
+  const d=DATA.ind; if(!d)return;
+  const item=d.indicators?.find(g=>g.group===group)?.items?.find(i=>i.name===name);
+  if(!item)return;
+  const s=d.summary||{};
+  const DETAIL={
+    'Yalpi marja':{formula:'Gross = (Daromad − Tannarx) / Daromad × 100',interp:`Me'yor: 20-50%. Qiymat: ${item.value}`,good:'>25%',warn:'10-25%',bad:'<10%',kpis:[{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Yalpi foyda',val:fmt(s.gross,true)},{lbl:'Marja',val:item.value}]},
+    'EBIT marja':{formula:'EBIT / Daromad × 100',interp:`Operatsion samaradorlik. Me'yor: 10-20%. Qiymat: ${item.value}`,good:'>15%',warn:'5-15%',bad:'<5%',kpis:[{lbl:'EBIT',val:fmt(s.ebit,true)},{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Marja',val:item.value}]},
+    'Sof foyda marja':{formula:'Sof foyda / Daromad × 100',interp:`Me'yor: 5-15%. Qiymat: ${item.value}`,good:'>10%',warn:'3-10%',bad:'<3%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Marja',val:item.value}]},
+    'ROA':{formula:'Sof foyda / Jami aktiv × 100',interp:`Me'yor: 5-10%. Qiymat: ${item.value}`,good:'>8%',warn:'3-8%',bad:'<3%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'ROA',val:item.value}]},
+    'ROE':{formula:'Sof foyda / Kapital × 100',interp:`Me'yor: 10-20%. Qiymat: ${item.value}`,good:'>15%',warn:'5-15%',bad:'<5%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'ROE',val:item.value}]},
+    'Joriy likvidlik':{formula:'Joriy aktiv / Joriy majburiyat',interp:`>1.5 = xavfsiz. <1 = qiyin. Qiymat: ${item.value}`,good:'>1.5',warn:'1-1.5',bad:'<1',kpis:[{lbl:'Joriy aktiv',val:'—'},{lbl:'Joriy maj.',val:'—'},{lbl:'Nisbat',val:item.value}]},
+    'Debt/Equity':{formula:'Jami qarz / Kapital',interp:`<1 = xavfsiz. >2 = yuqori xavf. Qiymat: ${item.value}`,good:'<0.5',warn:'0.5-1.5',bad:'>1.5',kpis:[{lbl:'Qarz',val:fmt(s.debt,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'D/E',val:item.value}]},
+    'Debt/EBITDA':{formula:'Jami qarz / EBITDA',interp:`<3 = yaxshi. Qiymat: ${item.value}`,good:'<2',warn:'2-3',bad:'>3',kpis:[{lbl:'Qarz',val:fmt(s.debt,true)},{lbl:'EBITDA',val:fmt(s.ebitda,true)},{lbl:'Nisbat',val:item.value}]},
+    'Foiz qoplash':{formula:'EBIT / Foiz xarajati',interp:`>2 = xavfsiz. Qiymat: ${item.value}`,good:'>3',warn:'1.5-3',bad:'<1.5',kpis:[{lbl:'EBIT',val:fmt(s.ebit,true)},{lbl:'Foiz',val:'—'},{lbl:'ICR',val:item.value}]},
+  };
+  const det=DETAIL[name]||{formula:item.note||'—',interp:item.value,good:'',warn:'',bad:'',kpis:[{lbl:'Qiymat',val:item.value},{lbl:'Tavsif',val:item.note||'—'},{lbl:'Guruh',val:group}]};
+  const vNum=parseFloat(item.value);
+  let gW=50,gC='gauge-ok';
+  if(!isNaN(vNum)){
+    if(item.value.includes('%')){gW=Math.min(100,Math.abs(vNum));gC=vNum>15?'gauge-ok':vNum>5?'gauge-warn':'gauge-bad';}
+    else{gW=Math.min(100,Math.abs(vNum)*20);gC=vNum<1?'gauge-ok':vNum<2?'gauge-warn':'gauge-bad';}
+  }
+  document.getElementById('modalTitle').textContent=name;
+  document.getElementById('modalSub').textContent=group+' ko\'rsatkichi';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="modal-kpi-row">${det.kpis.map(k=>`<div class="modal-kpi">
+      <div class="modal-kpi-lbl">${k.lbl}</div><div class="modal-kpi-val">${k.val}</div></div>`).join('')}</div>
+    <div class="modal-section"><div class="modal-sec-title">Formula</div>
+      <div class="modal-formula">${det.formula}</div></div>
+    <div class="modal-section"><div class="modal-sec-title">Hozirgi holat</div>
+      <div class="modal-gauge">
+        <div class="gauge-label"><span style="color:var(--muted)">Past</span>
+          <span style="font-family:var(--mono);font-weight:700">${item.value}</span>
+          <span style="color:var(--muted)">Yuqori</span></div>
+        <div class="gauge-track"><div class="gauge-fill ${gC}" style="width:${gW}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted)">
+          <span>🔴 ${det.bad}</span><span>🟡 ${det.warn}</span><span>🟢 ${det.good}</span></div></div></div>
+    <div class="modal-section"><div class="modal-sec-title">Tahlil</div>
+      <div class="modal-interp">${det.interp}</div></div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function showKpiDetail(key) {
+  const pnl=DATA.pnl; if(!pnl)return;
+  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const MNs=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+  const KEY_MAP={pnl_rev:'revenue',pnl_gross:'gross',pnl_ebit:'ebit',pnl_net:'net',pnl_cost:'cost'};
+  const LABELS={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
+    cf_op:'Operatsion CF',cf_inv:'Investitsion CF',cf_fin:'Moliyaviy CF',cf_net:'Net CF'};
+  const pnlKey=KEY_MAP[key];
+  document.getElementById('modalTitle').textContent=LABELS[key]||key;
+  document.getElementById('modalSub').textContent='Oylar bo\'yicha taqsimot';
+  let bodyHtml='';
+  if(pnlKey&&pnl.data){
+    const row=pnl.data.find(x=>x.key===pnlKey);
+    if(row){
+      const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
+      bodyHtml+=`<div class="modal-section"><div class="modal-sec-title">Oylik ko'rinish</div>`;
+      MNs.forEach((mn,i)=>{
+        const mk=MKS[i],v=row.months?.[mk]||0;
+        const w=Math.min(100,Math.abs(v)/maxV*100);
+        bodyHtml+=`<div class="bar-row" style="margin-bottom:8px">
+          <div class="bar-lbl" style="min-width:80px">${mn}</div>
+          <div class="bar-track"><div class="bar-fill ${v>=0?'bf-rev':'bf-net neg'}" style="width:${w}%"></div></div>
+          <div class="bar-val ${cls(v)}">${fmt(v)}</div></div>`;
+      });
+      const total=MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0);
+      bodyHtml+=`<div style="text-align:right;padding:12px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(total)}</div></div>`;
+    }
+  }
+  document.getElementById('modalBody').innerHTML=bodyHtml||'<p style="color:var(--muted)">Tafsilot yo\'q</p>';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if(!e||e.target===document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// MOBIL HAMBURGER
+// ═══════════════════════════════════════════════════════
+function toggleFilterDrawer() {
+  const d=document.getElementById('filterDrawer');
+  const h=document.getElementById('hamburger');
+  const open=d.classList.toggle('open');
+  h.classList.toggle('open',open);
+}
+function syncFilter(fId,tId) {
+  document.getElementById(tId).value=document.getElementById(fId).value;
+  toggleFilterDrawer(); applyFilter();
+}
+document.addEventListener('click',e=>{
+  const d=document.getElementById('filterDrawer');
+  const h=document.getElementById('hamburger');
+  if(d?.classList.contains('open')&&!d.contains(e.target)&&!h?.contains(e.target)){
+    d.classList.remove('open');h?.classList.remove('open');
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// ERROR HELPERS
+// ═══════════════════════════════════════════════════════
+function showErrIn(id,msg) {
+  const el=document.getElementById(id);
+  if(el)el.innerHTML=`<div class="err-box" style="margin:16px">❌ ${msg||'Yuklanmadi'}</div>`;
+}
+function showErr(msg) {
+  document.getElementById('main').innerHTML=`<div class="err-box" style="margin:24px">❌ ${msg}</div>`;
+}
+function showSetupGuide(errMsg) {
+  document.getElementById('main').innerHTML=`
+    <div style="max-width:640px;margin:0 auto">
+      <div class="err-box" style="margin-bottom:20px">⚠️ ${errMsg}</div>
+      <div class="tw"><div class="thead-row"><div class="ttitle">🛠 O'rnatish qo'llanmasi</div></div>
+      <div style="padding:20px">
+        ${['Google Sheets ni yuklang','Extensions → Apps Script',
+           'Code_AppScript_v2.gs ni yapıştiring va saqlang',
+           'Deploy → New deployment → Web App → Anyone → Deploy',
+           'URL + ?action=ping → {"ok":true} bo\'lsa tayyor'].map((s,i)=>
+          `<div style="display:flex;gap:12px;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:white;
+              display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${i+1}</div>
+            <div style="font-size:12px">${s}</div></div>`).join('')}
+        <button class="rf-btn" style="margin-top:8px" onclick="loadAll(true)">↻ Qayta urinish</button>
+      </div></div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if((e.ctrlKey||e.metaKey)&&e.key==='r'){e.preventDefault();loadAll(true);}
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadAll();
 </script>
-
 </body>
 </html>
