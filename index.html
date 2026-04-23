@@ -1,10 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Finance Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:Arial;background:#0f172a;color:#fff;margin:0;padding:10px}
+.card{background:#1e293b;padding:15px;margin:10px 0;border-radius:10px}
+h2{margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+canvas{background:#fff;border-radius:10px}
+</style>
 </head>
+
 <body>
-  <h1>ИШЛАДИ ✅</h1>
+
+<h2>📊 Finance Dashboard</h2>
+
+<div class="grid">
+  <div class="card" onclick="showDetail('rev')">
+    💰 Daromad: <span id="rev">0</span>
+  </div>
+  <div class="card" onclick="showDetail('exp')">
+    📉 Xarajat: <span id="exp">0</span>
+  </div>
+</div>
+
+<div class="card">
+  📊 Foyda: <span id="profit">0</span>
+</div>
+
+<div class="card">
+  <canvas id="chart"></canvas>
+</div>
+
+<div id="detail" class="card"></div>
+
+<script>
+
+// 🔴 ШУНИ ЎЗГАРТИРАСИЗ
+const URL = "PASTE_YOUR_APPS_SCRIPT_URL";
+
+let DATA = [];
+
+async function loadData(){
+  try{
+    const res = await fetch(URL);
+    DATA = await res.json();
+    calc();
+  }catch(e){
+    alert("Маълумот келмади");
+  }
+}
+
+function calc(){
+
+  let rev=0, exp=0;
+
+  DATA.forEach(r=>{
+    if(r.acc.startsWith("90")) rev += r.kr_end;
+    if(r.acc.startsWith("20")) exp += r.db_end;
+  });
+
+  document.getElementById("rev").innerText = rev.toLocaleString();
+  document.getElementById("exp").innerText = exp.toLocaleString();
+  document.getElementById("profit").innerText = (rev-exp).toLocaleString();
+
+  drawChart(rev,exp);
+}
+
+function drawChart(rev,exp){
+  new Chart(document.getElementById("chart"), {
+    type: 'bar',
+    data: {
+      labels: ["Daromad","Xarajat"],
+      datasets: [{
+        data: [rev,exp]
+      }]
+    }
+  });
+}
+
+function showDetail(type){
+  let html = "<h3>Detal</h3>";
+
+  DATA.forEach(r=>{
+    if(type=="rev" && r.acc.startsWith("90")){
+      html += `<p>${r.project}: ${r.kr_end}</p>`;
+    }
+    if(type=="exp" && r.acc.startsWith("20")){
+      html += `<p>${r.project}: ${r.db_end}</p>`;
+    }
+  });
+
+  document.getElementById("detail").innerHTML = html;
+}
+
+loadData();
+
+</script>
+
 </body>
 </html>
