@@ -383,7 +383,9 @@ table.ft tfoot td{border-top:2px solid var(--border2);padding:10px 12px;font-wei
     <select class="fsel" id="fFirma" onchange="applyFilter()"><option value="ALL">Barcha firmalar</option></select>
     <select class="fsel" id="fProject" onchange="applyFilter()"><option value="ALL">Barcha proyektlar</option></select>
     <select class="fsel" id="fYear" onchange="applyFilter()">
-      <option value="2025">2025</option><option value="2024">2024</option>
+      <option value="2026" selected>2026</option>
+      <option value="2025">2025</option>
+      <option value="2024">2024</option>
     </select>
     <select class="fsel" id="fMonth" onchange="applyFilter()">
       <option value="ALL">Barcha oylar</option>
@@ -410,7 +412,9 @@ table.ft tfoot td{border-top:2px solid var(--border2);padding:10px 12px;font-wei
   <select class="fsel" id="fFirma2" onchange="syncFilter('fFirma2','fFirma')"><option value="ALL">Barcha firmalar</option></select>
   <select class="fsel" id="fProject2" onchange="syncFilter('fProject2','fProject')"><option value="ALL">Barcha proyektlar</option></select>
   <select class="fsel" id="fYear2" onchange="syncFilter('fYear2','fYear')">
-    <option value="2025">2025</option><option value="2024">2024</option>
+    <option value="2026" selected>2026</option>
+    <option value="2025">2025</option>
+    <option value="2024">2024</option>
   </select>
   <select class="fsel" id="fMonth2" onchange="syncFilter('fMonth2','fMonth')">
     <option value="ALL">Barcha oylar</option>
@@ -511,10 +515,10 @@ table.ft tfoot td{border-top:2px solid var(--border2);padding:10px 12px;font-wei
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
-const API = 'https://script.google.com/macros/s/AKfycby4F8SfZYGtYoS3J7WOX8VCYJzcR1Gzq2yq3Q1ufkL1d7n_yBBQeAyEc4iLqt_4NOhnYQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbx4u6OOgMb7Bj-dJVZIJpWtYBKvkkAw8-fFNzTDs0Te7y8KHVNHHy1jgsiEYIvZWReN8Q/exec';
 
 const CACHE_KEY = 'fd_cache';
-const CACHE_TTL = 10 * 60 * 1000; // 10 daqiqa
+const CACHE_TTL = 10 * 60 * 1000;
 
 let DATA = {};
 let SETTINGS = { firmalar:[], proyektlar:[] };
@@ -592,22 +596,25 @@ function setStatus(s) {
 }
 
 function updateFilterOptions() {
-  // Desktop filtrlar
   const pairs = [
-    ['fFirma',   'fFirma2',   SETTINGS.firmalar.filter(f=>f.active),
+    ['fFirma','fFirma2',
+     SETTINGS.firmalar.filter(f=>f.active),
      '<option value="ALL">Barcha firmalar</option>',
      f=>`<option value="${f.id}">${f.name||f.id}</option>`],
-    ['fProject', 'fProject2', SETTINGS.proyektlar.filter(p=>p.id&&p.name),
+    ['fProject','fProject2',
+     SETTINGS.proyektlar.filter(p=>p.id&&p.name),
      '<option value="ALL">Barcha proyektlar</option>',
      p=>`<option value="${p.id}">${p.name} (${p.firma})</option>`],
   ];
-  pairs.forEach(([desktopId, mobileId, items, defaultOpt, rowFn])=>{
-    const des = document.getElementById(desktopId);
-    const mob = document.getElementById(mobileId);
-    const curVal = des ? des.value : 'ALL';
-    const html = defaultOpt + items.map(rowFn).join('');
-    if(des){ des.innerHTML = html; des.value = curVal; }
-    if(mob){ mob.innerHTML = html; mob.value = curVal; }
+  pairs.forEach(([deskId,mobId,items,def,rowFn])=>{
+    const html = def + items.map(rowFn).join('');
+    [deskId,mobId].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      const cur=el.value;
+      el.innerHTML=html;
+      el.value=cur;
+    });
   });
 }
 
@@ -619,60 +626,94 @@ async function loadAll(forceRefresh=false) {
   const f = getFilters();
   const cacheKey = JSON.stringify(f);
 
-  // Keshdan olish
+  // Keshdan
   if (!forceRefresh) {
     const cached = loadCache(cacheKey);
-    if (cached) {
+    if (cached && cached.data && cached.settings) {
       DATA = cached.data;
       SETTINGS = cached.settings;
       updateFilterOptions();
-      document.getElementById('orgName').textContent = cached.orgName || 'FinDash';
-      const age = cacheAge(cacheKey);
-      document.getElementById('cacheInfo').textContent = `🟡 Kesh: ${age}s oldin`;
+      if (cached.orgName) document.getElementById('orgName').textContent = cached.orgName;
+      document.getElementById('cacheInfo').textContent = `🟡 Kesh: ${cacheAge(cacheKey)||0}s oldin`;
       renderCurrent(); setStatus('ok'); return;
     }
   }
 
+  // API tekshiruv
+  let pingOk = false;
   try {
-    // Settings (bir marta)
-    if (!SETTINGS.firmalar.length || forceRefresh) {
-      const rawS = await callAPI({ action:'settings' }).catch(()=>null);
-      if (rawS && !rawS.error) {
-        SETTINGS = {
-          firmalar:   Array.isArray(rawS.firmalar)   ? rawS.firmalar   : [],
-          proyektlar: Array.isArray(rawS.proyektlar) ? rawS.proyektlar : [],
-          mapping:    Array.isArray(rawS.mapping)    ? rawS.mapping    : [],
-        };
-        updateFilterOptions();
-        const active = SETTINGS.firmalar.filter(f=>f.active);
-        if (active.length) document.getElementById('orgName').textContent = active.map(f=>f.short||f.id).join(' | ');
-      }
+    const p = await Promise.race([
+      callAPI({action:'ping'}),
+      new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout 15s')),15000))
+    ]);
+    pingOk = p && p.ok;
+    if(pingOk) console.log('Ping OK:', p.time);
+    else console.warn('Ping failed:', p);
+  } catch(e) {
+    console.error('Ping error:', e.message);
+  }
+
+  if (!pingOk) {
+    setStatus('err');
+    showSetupGuide('API javob bermadi (15s).<br>Apps Script deploy qilinganmi?<br><small>'+API.slice(0,80)+'</small>');
+    return;
+  }
+
+  try {
+    // Settings va all — parallel
+    console.log('Loading: settings + all, filters:', f);
+    const t0=Date.now();
+    const [rawS, raw] = await Promise.all([
+      callAPI({action:'settings'}).catch(e=>({_err:e.message})),
+      callAPI({action:'all', ...f}).catch(e=>({_err:e.message})),
+    ]);
+    console.log('Loaded in', Date.now()-t0, 'ms', {rawS, raw});
+
+    // Settings
+    if (rawS && !rawS._err && !rawS.error) {
+      SETTINGS = {
+        firmalar:   Array.isArray(rawS.firmalar)   ? rawS.firmalar   : [],
+        proyektlar: Array.isArray(rawS.proyektlar) ? rawS.proyektlar : [],
+      };
+      updateFilterOptions();
+      const act = SETTINGS.firmalar.filter(x=>x.active);
+      if (act.length) document.getElementById('orgName').textContent = act.map(x=>x.short||x.id).join(' | ');
+    } else {
+      console.warn('Settings yuklanmadi:', rawS?._err||rawS?.error);
     }
 
-    // BITTA so'rov bilan barcha hisobotlar
-    const raw = await callAPI({ action:'all', ...f });
-    if (raw.error) { showErr(raw.error); setStatus('err'); return; }
+    // All
+    if (!raw || raw._err || raw.error) {
+      const msg = raw?._err || raw?.error || 'Noma\u02BBlum xato';
+      // Xato bo'lsa ham bo'sh hisobotlar bilan ishlashga ruxsat
+      if (msg.includes('Settings') || msg.includes('sheet') || msg.includes('Sheet')) {
+        showSetupGuide('Google Sheets bosh yoki tuzilmasi xato: ' + msg);
+        setStatus('err'); return;
+      }
+      // Boshqa xato — ko'rsatamiz lekin davom etamiz
+      console.error('all xato:', msg);
+      DATA = { pnl:{error:msg}, cf:{error:msg}, bal:{error:msg}, ind:{indicators:[],summary:{}}, osv:{} };
+    } else {
+      DATA = {
+        pnl: raw.pnl        || {error:'PNL yoq'},
+        cf:  raw.cashflow   || {error:'CF yoq'},
+        bal: raw.balance    || {error:'Balans yoq'},
+        ind: raw.indicators || {indicators:[],summary:{}},
+        osv: raw.osv        || {},
+      };
+    }
 
-    DATA = {
-      pnl: raw.pnl        || { error:'PNL yuklanmadi' },
-      cf:  raw.cashflow   || { error:'CF yuklanmadi' },
-      bal: raw.balance    || { error:'Balans yuklanmadi' },
-      dk:  { rows:[] },   // DK endi OSV dan (4000-6999 hisoblar)
-      ind: raw.indicators || { indicators:[] },
-      osv: raw.osv        || {},
-    };
-
-    // Keshga saqlash
     const orgName = document.getElementById('orgName').textContent;
-    saveCache(cacheKey, { data: DATA, settings: SETTINGS, orgName });
-    document.getElementById('cacheInfo').textContent = `🟢 Yangilandi: ${new Date().toLocaleTimeString('uz')}`;
-
+    saveCache(cacheKey, {data:DATA, settings:SETTINGS, orgName});
+    document.getElementById('cacheInfo').textContent = `🟢 ${new Date().toLocaleTimeString()}`;
     renderCurrent(); setStatus('ok');
+
   } catch(e) {
     setStatus('err');
-    showSetupGuide(e.message);
+    showSetupGuide('Kutilmagan xato: ' + e.message);
   }
 }
+
 
 // ═══════════════════════════════════════════════════════
 // PAGE SWITCH
@@ -683,9 +724,8 @@ function switchPage(page, el) {
   document.getElementById('page-'+page).classList.add('active');
   if (el) el.classList.add('active');
   currentPage = page;
-  // DK, Hisoblar va Balans uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
-  const needsOSV = ['dk','accounts','balance'].includes(page);
-  if (needsOSV && !Object.keys(DATA.osv||{}).length) {
+  // DK va Hisoblar uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
+  if ((page==='dk'||page==='accounts') && !Object.keys(DATA.osv||{}).length) {
     loadOSV().then(renderCurrent);
   } else {
     renderCurrent();
@@ -702,9 +742,16 @@ async function loadOSV() {
   setStatus('ok');
 }
 function renderCurrent() {
-  if (!DATA.pnl) return;
-  const renders = { pnl:renderPNL, cashflow:renderCF, balance:renderBal, dk:renderDK, indicators:renderInd, accounts:renderAccounts };
-  if (renders[currentPage]) renders[currentPage]();
+  if (!DATA.pnl) {
+    console.warn('DATA.pnl yoq — render chaqirilmaydi');
+    return;
+  }
+  const renders = {
+    pnl:renderPNL, cashflow:renderCF, balance:renderBal,
+    dk:renderDK, indicators:renderInd, accounts:renderAccounts
+  };
+  const fn=renders[currentPage];
+  if(fn) { try { fn(); } catch(e){ console.error('Render xato ('+currentPage+'):', e); showErrIn('pnl-table',e.message); } }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -720,16 +767,16 @@ function renderPNL() {
   const rev=get('revenue'),gross=get('gross'),ebit=get('ebit'),net=get('net'),cost=get('cost');
 
   document.getElementById('pnl-kpi').innerHTML = [
-    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', click:'pnl_rev', cat:'revenue' },
-    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', click:'pnl_gross', cat:'gross' },
-    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', click:'pnl_ebit', cat:'ebit' },
-    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', click:'pnl_net', cat:'net' },
-    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', click:'pnl_cost', cat:'cost' },
+    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', cat:'revenue' },
+    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', cat:'gross' },
+    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', cat:'ebit' },
+    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', cat:'net' },
+    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', cat:'cost' },
   ].map(k=>`<div class="kpi-card clickable" onclick="showCategoryDetail('pnl','${k.cat}','${k.label}')">
     <div class="kpi-label">${k.label}</div>
     <div class="kpi-value ${k.c}">${k.val}</div>
     ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
-    <div class="kpi-arrow">↗ Hisoblar</div>
+    <div class="kpi-arrow">&#x2197; Hisoblar</div>
   </div>`).join('');
 
   // Bar chart
@@ -829,16 +876,11 @@ function renderBal() {
   function bsec(title,rows,total){
     let h=`<div class="bal-sec"><div class="bal-sec-title"><span>${title}</span>
       <span class="bal-total ${cls(total)}">${fmt(total,true)}</span></div>
-      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th><th style="width:32px"></th></tr></thead><tbody>`;
-    rows.forEach(r=>{
-      if(!r.net)return;
-      h+=`<tr style="cursor:pointer" onclick="showCategoryDetail('bal','${r.category}',${JSON.stringify(r.category)})">
-        <td>${r.category}</td>
-        <td class="${cls(r.net)} r">${fmt(r.net)}</td>
-        <td style="color:var(--muted);font-size:11px;text-align:center">›</td>
-      </tr>`;
-    });
-    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)} r">${fmt(total)}</td><td></td></tr></tfoot></table></div>`;
+      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th></tr></thead><tbody>`;
+    rows.forEach(r=>{if(!r.net)return;h+=`<tr style="cursor:pointer" onclick="showCategoryDetail('bal','${r.category}','${r.category}')">
+      <td>${r.category}</td><td class="${cls(r.net)} r">${fmt(r.net)}</td>
+      <td style="width:20px;color:var(--muted);text-align:center">›</td></tr>`;});
+    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)}">${fmt(total)}</td></tr></tfoot></table></div>`;
     return h;
   }
   document.getElementById('bal-sections').innerHTML=
@@ -1000,7 +1042,6 @@ function renderInd() {
 // ═══════════════════════════════════════════════════════
 // HISOBLAR SAHIFASI
 // ═══════════════════════════════════════════════════════
-let ALL_ACCOUNTS=[];
 function renderAccounts() {
   const f=getFilters();
   document.getElementById('acc-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
@@ -1243,26 +1284,26 @@ function showIndicatorDetail(key) {
 // ═══════════════════════════════════════════════════════
 // KATEGORIYA DETAIL MODAL
 // ═══════════════════════════════════════════════════════
-const BAL_ACC_MAP = {
+const BAL_ACC_MAP={
   'Uzoq muddatli aktivlar':['0100','0110','0130','0130.1','0130.2','0160'],
   'Amortizatsiya':['0200','0211','0230','0230.1','0230.2','0260'],
-  "Kapital qo'yilmalar":['0800','0820','0820.2'],
+  "Kapital qoyilmalar":['0800','0820','0820.2'],
   'TMZ':['1000','1010','1030','1040','1050','1080'],
   'Tayyor mahsulot':['2800','2810'],
   'Debitorlar':['4000','4010','4200','4210','4300','4310','4315'],
   'Soliq aktivlar':['4400','4410','4410.1','4410.3','4410.4','4410.10','4420','4420.1','4430','4450','4460','4490'],
-  "Ijtimoiy sug'urta aktiv":['4500','4510','4510.1'],
+  'Ijtimoiy sugurta aktiv':['4500','4510','4510.1'],
   'Muassislar':['4600','4610'],
   'Qisqa muddatli invest.':['5800','5810','5810.1'],
   'Kreditorlar':['6000','6010','6015','6300','6310'],
   'Soliq maj.':['6400','6410','6410.1','6420','6420.1','6430','6450','6460','6490'],
-  "Ijtimoiy sug'urta maj.":['6500','6510','6510.1','6530','6530.1'],
+  'Ijtimoiy sugurta maj.':['6500','6510','6510.1','6530','6530.1'],
   'Xodimlar':['6700','6710'],
   'Qarz maj.':['6800','6810','6820','6900','6920','6990'],
   'Uzoq muddatli qarz':['7800','7810'],
   'Kapital':['8300','8330','8700','8710'],
 };
-const PNL_ACC_MAP = {
+const PNL_ACC_MAP={
   'revenue':['9000','9010','9010.1','9020','9020.1','9030','9030.1'],
   'cost':['9100','9110','9110.1','9120','9120.1','9130','9130.1','2000','2010'],
   'gross':['9000','9010','9020','9030','9100','9110','9120','9130'],
@@ -1271,77 +1312,74 @@ const PNL_ACC_MAP = {
   'fin_income':['9500','9540'],'fin_expense':['9600','9610','9620'],
   'tax':['9800','9810'],'net':['9900','9910'],
 };
-const CF_ACC_MAP = {
+const CF_ACC_MAP={
   'operating':['5000','5010','5100','5110','5700'],
   'investing':['5730','5800','5810'],
   'financing':['6800','6810','6820','7800','7810'],
 };
 
-function showCategoryDetail(type, cat, label) {
-  document.getElementById('modalTitle').textContent = label;
-  document.getElementById('modalSub').textContent = 'Hisob kodlari bo'yicha tafsilot';
+function showCategoryDetail(type,cat,label){
+  document.getElementById('modalTitle').textContent=label;
+  document.getElementById('modalSub').textContent='Hisob kodlari boyicha tafsilot';
   document.getElementById('modalOverlay').classList.add('open');
   const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
   const MNS=['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
   let html='';
 
-  function accCard(code,name,total,items){
+  function card(code,name,total,items){
     let h=`<div style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
         <div><span style="font-family:var(--mono);color:var(--cyan);font-size:11px;margin-right:8px">${code}</span>
           <span style="font-size:12px;font-weight:600">${name}</span></div>
         <span class="${cls(total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(total)}</span>
       </div>`;
-    items.forEach((it,idx)=>{
-      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px 7px 28px;${idx<items.length-1?'border-bottom:1px solid var(--border)':''}">
+    (items||[]).forEach((it,i)=>{
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px 7px 28px;${i<items.length-1?'border-bottom:1px solid var(--border)':''}">
         <div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:10px;color:var(--muted)">${idx+1}.</span>
+          <span style="color:var(--muted);font-size:10px">${i+1}.</span>
           <span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:10px">${it.project||'—'}</span>
-          <span style="font-size:10px;color:var(--muted)">${it.firma||''}</span>
+          <span style="color:var(--muted);font-size:10px">${it.firma||''}</span>
         </div>
-        <span class="${cls(it.total||it.net||0)}" style="font-family:var(--mono);font-size:12px">${fmt(it.total||it.net||0)}</span>
+        <span class="${cls(it.val||0)}" style="font-family:var(--mono);font-size:12px">${fmt(it.val||0)}</span>
       </div>`;
     });
     return h+'</div>';
   }
 
-  function getOSVData(codes, valFn) {
-    const osvData=DATA.osv||{}, byCode={};
-    Object.entries(osvData).forEach(([firmaId,osv])=>{
+  function fromOSV(codes,valFn){
+    const byCode={};
+    Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
       if(!osv||osv.error)return;
       (osv.rows||[]).forEach(row=>{
         if(!codes.includes(row.code))return;
+        const v=valFn(row);
+        if(!v)return;
         if(!byCode[row.code])byCode[row.code]={code:row.code,name:row.name,items:[],total:0};
-        const val=valFn(row);
-        if(!val&&val!==0)return;
-        byCode[row.code].items.push({project:row.project||'—',firma:firmaId,total:val});
-        byCode[row.code].total+=val;
+        byCode[row.code].items.push({project:row.project||'—',firma:fId,val:v});
+        byCode[row.code].total+=v;
       });
     });
-    return byCode;
+    return Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
   }
 
   if(type==='bal'){
-    const byCode=getOSVData(BAL_ACC_MAP[cat]||[],row=>(row.sk_dt||0)-(row.sk_kt||0));
-    if(!Object.keys(byCode).length){
-      html='<div style="padding:20px;text-align:center;color:var(--muted)"><p>Balans ma'lumoti yo'q</p><p style="font-size:11px;margin-top:8px">Avval "Hisoblar" bo'limini bir marta oching — shunda OSV yuklanadi</p></div>';
+    const grps=fromOSV(BAL_ACC_MAP[cat]||[],row=>(row.sk_dt||0)-(row.sk_kt||0));
+    if(!grps.length){
+      html='<div style="padding:20px;text-align:center;color:var(--muted)"><p>Malumot yoq</p><p style="font-size:11px;margin-top:6px">Avval Hisoblar bolimini bir marta oching</p></div>';
     } else {
-      html='<div class="modal-section">'+
-        Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total))
-          .map(g=>accCard(g.code,g.name,g.total,g.items)).join('')+'</div>';
+      html='<div class="modal-section">'+grps.map(g=>card(g.code,g.name,g.total,g.items)).join('')+'</div>';
     }
   }
-
   else if(type==='pnl'){
-    const byCode=getOSVData(PNL_ACC_MAP[cat]||[],row=>{
+    const grps=fromOSV(PNL_ACC_MAP[cat]||[],row=>{
       let t=0; MKS.forEach(mn=>{const d=row.months?.[mn]||{dt:0,kt:0};t+=d.dt-d.kt;}); return t;
     });
-    if(!Object.keys(byCode).length){
-      // OSV yo'q — PNL oylik grafik
+    if(!grps.length){
+      // PNL dan oylik grafik
       const row=DATA.pnl?.data?.find(x=>x.key===cat);
       if(row){
         const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
-        html='<div class="modal-section"><div class="modal-sec-title">📅 Oylik ko'rinish</div>';
+        html='<div class="modal-section"><div class="modal-sec-title">Oylik korinish</div>';
         MNS.forEach((mn,i)=>{
           const mk=MKS[i],v=row.months?.[mk]||0; if(!v)return;
           html+=`<div class="bar-row" style="margin-bottom:6px">
@@ -1349,15 +1387,13 @@ function showCategoryDetail(type, cat, label) {
             <div class="bar-track"><div class="bar-fill ${v>=0?'bf-rev':'bf-net neg'}" style="width:${Math.min(100,Math.abs(v)/maxV*100)}%"></div></div>
             <div class="bar-val ${cls(v)}">${fmt(v,true)}</div></div>`;
         });
-        html+=`<div style="text-align:right;padding:10px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0))}</div></div>`;
-      } else html='<p style="padding:20px;text-align:center;color:var(--muted)">Ma'lumot yo'q</p>';
+        const tot=MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0);
+        html+=`<div style="text-align:right;padding:10px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(tot)}</div></div>`;
+      } else html='<p style="padding:20px;text-align:center;color:var(--muted)">Malumot yoq</p>';
     } else {
-      html='<div class="modal-section">'+
-        Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total))
-          .map(g=>accCard(g.code,g.name,g.total,g.items)).join('')+'</div>';
+      html='<div class="modal-section">'+grps.map(g=>card(g.code,g.name,g.total,g.items)).join('')+'</div>';
     }
   }
-
   else if(type==='cf'){
     const sec=DATA.cf?.sections?.find(s=>s.key===cat);
     if(sec?.accounts?.filter(a=>a.total).length){
@@ -1369,19 +1405,245 @@ function showCategoryDetail(type, cat, label) {
             <span class="${cls(acc.total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(acc.total)}</span>
           </div>`).join('')+
         `<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(sec.total)}</div></div>`;
-    } else html='<p style="padding:24px;text-align:center;color:var(--muted)">Ma'lumot yo'q</p>';
+    } else html='<p style="padding:24px;text-align:center;color:var(--muted)">Malumot yoq</p>';
   }
 
-  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yo'q</p>';
+  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
 }
 
-function showKpiDetail(key) {
+function showKpiDetail(key){
   const MAP={pnl_rev:'revenue',pnl_gross:'gross',pnl_ebit:'ebit',pnl_net:'net',pnl_cost:'cost',
     cf_op:'operating',cf_inv:'investing',cf_fin:'financing',cf_net:'net'};
-  const LABEL={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
+  const LBL={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
     cf_op:'Operatsion CF',cf_inv:'Investitsion CF',cf_fin:'Moliyaviy CF',cf_net:'Net CF'};
-  showCategoryDetail(key.startsWith('cf')?'cf':'pnl', MAP[key]||key, LABEL[key]||key);
+  showCategoryDetail(key.startsWith('cf')?'cf':'pnl',MAP[key]||key,LBL[key]||key);
 }
+
+// ═══════════════════════════════════════════════════════
+// DK SAHIFASI
+// ═══════════════════════════════════════════════════════
+function renderDK(){
+  const f=getFilters();
+  const osvData=DATA.osv||{};
+  document.getElementById('dk-sub').textContent=
+    `Debitor va Kreditor | ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+
+  const GROUPS=[
+    {label:'Xaridorlar va buyurtmachilar',deb:['4010','4000'],kred:['6310','6300']},
+    {label:'Yetkazib beruvchilar',deb:['4310','4300','4315'],kred:['6010','6000','6015']},
+    {label:'Moliyaviy yordam',deb:['5820','5800','5810'],kred:['6820','6800','6810','7810','7800']},
+    {label:'Boshqa debitor/kreditorlar',deb:['4200','4210','4600','4610'],kred:['6700','6710','6900','6920','6990']},
+  ];
+  const accData={};
+  Object.entries(osvData).forEach(([fId,osv])=>{
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&fId!==f.firma)return;
+    (osv.rows||[]).forEach(row=>{
+      if(f.project!=='ALL'&&row.project!==f.project)return;
+      const k=row.code+'|'+fId+'|'+(row.project||'');
+      if(!accData[k])accData[k]={code:row.code,name:row.name,project:row.project||'',firma:fId,sk_dt:0,sk_kt:0};
+      accData[k].sk_dt+=row.sk_dt||0; accData[k].sk_kt+=row.sk_kt||0;
+    });
+  });
+  const allRows=Object.values(accData);
+  let totD=0,totK=0,html='';
+
+  GROUPS.forEach(grp=>{
+    const dr=allRows.filter(r=>grp.deb.includes(r.code)&&(r.sk_dt||r.sk_kt));
+    const kr=allRows.filter(r=>grp.kred.includes(r.code)&&(r.sk_dt||r.sk_kt));
+    if(!dr.length&&!kr.length)return;
+    const gD=dr.reduce((s,r)=>s+Math.max(0,(r.sk_dt||0)-(r.sk_kt||0)),0);
+    const gK=kr.reduce((s,r)=>s+Math.max(0,(r.sk_kt||0)-(r.sk_dt||0)),0);
+    totD+=gD; totK+=gK;
+    const bRow=(rows)=>rows.map(r=>{
+      const net=(r.sk_dt||0)-(r.sk_kt||0);
+      return `<tr><td style="font-family:var(--mono);color:var(--cyan);font-size:11px">${r.code}</td>
+        <td>${r.name}</td>
+        <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:10px">${r.project||'—'}</span></td>
+        <td class="mu">${r.firma}</td>
+        <td class="${r.sk_dt?'pos':''} r">${r.sk_dt?fmt(r.sk_dt):'—'}</td>
+        <td class="${r.sk_kt?'neg':''} r">${r.sk_kt?fmt(r.sk_kt):'—'}</td>
+        <td class="${cls(net)} r"><b>${fmt(Math.abs(net))}</b></td></tr>`;
+    }).join('');
+    html+=`<div class="tw" style="margin-bottom:14px">
+      <div class="thead-row"><div class="ttitle">${grp.label}</div>
+        <div style="display:flex;gap:8px">
+          ${gD?`<span style="color:var(--green);font-family:var(--mono);font-size:11px">Deb: ${fmt(gD,true)}</span>`:''}
+          ${gK?`<span style="color:var(--red);font-family:var(--mono);font-size:11px">Kred: ${fmt(gK,true)}</span>`:''}
+        </div></div>
+      <table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th>Proyekt</th><th>Firma</th>
+        <th class="r">SK Dt</th><th class="r">SK Kt</th><th class="r">Saldo</th></tr></thead><tbody>
+      ${dr.length?`<tr><td colspan="7" style="background:rgba(34,197,94,0.06);color:var(--green);font-size:10px;font-weight:700;padding:5px 12px">DEBITORLAR</td></tr>${bRow(dr)}`:''}
+      ${kr.length?`<tr><td colspan="7" style="background:rgba(244,63,94,0.06);color:var(--red);font-size:10px;font-weight:700;padding:5px 12px">KREDITORLAR</td></tr>${bRow(kr)}`:''}
+      </tbody></table></div>`;
+  });
+
+  document.getElementById('dk-badge').textContent=`${allRows.length} ta`;
+  document.getElementById('dk-kpi').innerHTML=[
+    {label:'Jami debitorlar',val:fmt(totD,true),c:'pos',note:'Bizga qarzdorlar'},
+    {label:'Jami kreditorlar',val:fmt(totK,true),c:'neg',note:'Biz qarzdormiz'},
+    {label:'Sof pozitsiya',val:fmt(totD-totK,true),c:cls(totD-totK),note:'Deb - Kred'},
+    {label:'Jami',val:allRows.length,c:'neu',note:'OSV dan'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
+  document.getElementById('dk-table').innerHTML=html||
+    '<p style="padding:24px;text-align:center;color:var(--muted)">OSV da 4xxx/6xxx hisoblar buyicha malumot yoq</p>';
+}
+
+// ═══════════════════════════════════════════════════════
+// HISOBLAR SAHIFASI
+// ═══════════════════════════════════════════════════════
+let ALL_ACCOUNTS=[];
+function renderAccounts(){
+  const f=getFilters();
+  document.getElementById('acc-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  ALL_ACCOUNTS=[]; const accMap={};
+  Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&fId!==f.firma)return;
+    (osv.rows||[]).forEach(row=>{
+      if(f.project!=='ALL'&&row.project!==f.project)return;
+      if(!accMap[row.code])accMap[row.code]={code:row.code,name:row.name,sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,projects:{}};
+      const a=accMap[row.code];
+      a.sn_dt+=row.sn_dt||0;a.sn_kt+=row.sn_kt||0;
+      a.sk_dt+=row.sk_dt||0;a.sk_kt+=row.sk_kt||0;
+      if(!a.projects[row.project])a.projects[row.project]={dt:0,kt:0};
+      MKS.forEach(mn=>{const d=row.months?.[mn]||{dt:0,kt:0};a.total_dt+=d.dt;a.total_kt+=d.kt;a.projects[row.project].dt+=d.dt;a.projects[row.project].kt+=d.kt;});
+    });
+  });
+  ALL_ACCOUNTS=Object.values(accMap);
+  const withData=ALL_ACCOUNTS.filter(a=>a.total_dt||a.total_kt||a.sn_dt||a.sn_kt||a.sk_dt||a.sk_kt);
+  document.getElementById('acc-kpi').innerHTML=[
+    {label:'Jami hisoblar',val:ALL_ACCOUNTS.length,c:'neu',note:'Barcha scyotlar'},
+    {label:'Faol',val:withData.length,c:'pos',note:'Oborot bor'},
+    {label:'Jami Dt',val:fmt(ALL_ACCOUNTS.reduce((s,a)=>s+a.total_dt,0),true),c:'neu',note:''},
+    {label:'Jami Kt',val:fmt(ALL_ACCOUNTS.reduce((s,a)=>s+a.total_kt,0),true),c:'neu',note:''},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
+  document.getElementById('acc-badge').textContent=`${ALL_ACCOUNTS.length} ta`;
+  if(!ALL_ACCOUNTS.length){document.getElementById('acc-table').innerHTML='<p style="padding:24px;text-align:center;color:var(--muted)">Malumot yoq</p>';return;}
+  let html=`<table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th>Proyektlar</th>
+    <th class="r">SN Dt</th><th class="r">SN Kt</th><th class="r">Ob Dt</th><th class="r">Ob Kt</th>
+    <th class="r">SK Dt</th><th class="r">SK Kt</th><th style="width:60px"></th></tr></thead><tbody>`;
+  ALL_ACCOUNTS.forEach(acc=>{
+    const proj=Object.entries(acc.projects).filter(([,p])=>p.dt||p.kt)
+      .map(([pid])=>`<span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 5px;border-radius:4px;font-size:10px;margin-right:2px">${pid}</span>`).join('');
+    html+=`<tr data-code="${acc.code}" data-name="${acc.name.toLowerCase()}" style="${!acc.total_dt&&!acc.total_kt&&!acc.sn_dt&&!acc.sn_kt?'opacity:0.35':''}">
+      <td style="font-family:var(--mono);font-size:11px;color:var(--cyan)">${acc.code}</td>
+      <td>${acc.name}</td><td>${proj||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+      <td class="${acc.sn_dt?'pos':''} r">${acc.sn_dt?fmt(acc.sn_dt):'—'}</td>
+      <td class="${acc.sn_kt?'neg':''} r">${acc.sn_kt?fmt(acc.sn_kt):'—'}</td>
+      <td class="r">${acc.total_dt?fmt(acc.total_dt):'—'}</td>
+      <td class="r">${acc.total_kt?fmt(acc.total_kt):'—'}</td>
+      <td class="${acc.sk_dt?'pos':''} r">${acc.sk_dt?fmt(acc.sk_dt):'—'}</td>
+      <td class="${acc.sk_kt?'neg':''} r">${acc.sk_kt?fmt(acc.sk_kt):'—'}</td>
+      <td><button onclick="showAccDetail('${acc.code}')" style="padding:3px 9px;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer">Detail</button></td>
+    </tr>`;
+  });
+  document.getElementById('acc-table').innerHTML=html+'</tbody></table>';
+}
+
+function filterAccounts(){
+  const q=document.getElementById('accSearch').value.toLowerCase().trim();
+  let v=0;
+  document.querySelectorAll('#acc-table tbody tr[data-code]').forEach(tr=>{
+    const s=!q||tr.dataset.code.includes(q)||tr.dataset.name.includes(q);
+    tr.style.display=s?'':'none'; if(s)v++;
+  });
+  document.getElementById('acc-badge').textContent=`${v} ta`;
+}
+
+async function showAccDetail(code){
+  const acc=ALL_ACCOUNTS.find(a=>a.code===code); if(!acc)return;
+  document.getElementById('modalTitle').textContent=`${code} — ${acc.name}`;
+  document.getElementById('modalSub').textContent='Proyekt va oylar boyicha';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('modalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Yuklanmoqda...</div>';
+  const f=getFilters();
+  let d=null;
+  try{d=await callAPI({action:'account',code,firma:f.firma,year:f.year,project:f.project});}catch(e){}
+  if(!d||d.error) d=buildAccDetail(code,f);
+  renderAccModal(d);
+}
+
+function buildAccDetail(code,f){
+  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const r={code,name:'',sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,
+    byMonth:{},byProject:{},firms:[],
+    months_labels:['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'],
+    months_keys:MKS};
+  MKS.forEach(mn=>{r.byMonth[mn]={dt:0,kt:0};});
+  Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
+    if(!osv||osv.error)return;
+    if(f.firma!=='ALL'&&fId!==f.firma)return;
+    const rows=(osv.rows||[]).filter(row=>row.code===code&&(f.project==='ALL'||row.project===f.project));
+    if(!rows.length)return;
+    if(!r.name)r.name=rows[0].name;
+    const fe={firmaId:fId,firmaName:osv.firmName||fId,projects:[]};
+    const pa={};
+    rows.forEach(row=>{
+      r.sn_dt+=row.sn_dt||0;r.sn_kt+=row.sn_kt||0;r.sk_dt+=row.sk_dt||0;r.sk_kt+=row.sk_kt||0;
+      if(!pa[row.project])pa[row.project]={dt:0,kt:0,months:{}};
+      MKS.forEach(mn=>{
+        const dd=row.months?.[mn]||{dt:0,kt:0};
+        r.byMonth[mn].dt+=dd.dt;r.byMonth[mn].kt+=dd.kt;r.total_dt+=dd.dt;r.total_kt+=dd.kt;
+        if(!pa[row.project].months[mn])pa[row.project].months[mn]={dt:0,kt:0};
+        pa[row.project].months[mn].dt+=dd.dt;pa[row.project].months[mn].kt+=dd.kt;
+        pa[row.project].dt+=dd.dt;pa[row.project].kt+=dd.kt;
+      });
+    });
+    Object.entries(pa).forEach(([pid,pd])=>{
+      fe.projects.push({pid,pname:pid,total_dt:pd.dt,total_kt:pd.kt});
+      if(!r.byProject[pid])r.byProject[pid]={name:pid,dt:0,kt:0};
+      r.byProject[pid].dt+=pd.dt;r.byProject[pid].kt+=pd.kt;
+    });
+    r.firms.push(fe);
+  });
+  return r;
+}
+
+function renderAccModal(d){
+  const MKS=d.months_keys||['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+  const MNS=d.months_labels||['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
+  const netSn=(d.sn_dt||0)-(d.sn_kt||0),netSk=(d.sk_dt||0)-(d.sk_kt||0);
+  let html=`<div class="modal-kpi-row">
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo bosh</div><div class="modal-kpi-val ${cls(netSn)}">${fmt(netSn)}</div></div>
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Ob Dt / Kt</div>
+      <div class="modal-kpi-val" style="font-size:13px"><span style="color:var(--accent)">${fmt(d.total_dt,true)}</span> / <span style="color:var(--red)">${fmt(d.total_kt,true)}</span></div></div>
+    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo oxiri</div><div class="modal-kpi-val ${cls(netSk)}">${fmt(netSk)}</div></div>
+  </div>`;
+  const pe=Object.entries(d.byProject||{}).filter(([,p])=>p.dt||p.kt);
+  if(pe.length){
+    html+=`<div class="modal-section"><div class="modal-sec-title">Proyektlar boyicha</div>
+      <table class="ft"><thead><tr><th>Proyekt</th><th class="r">Dt</th><th class="r">Kt</th><th class="r">Farq</th></tr></thead><tbody>`;
+    pe.forEach(([pid,p])=>{const d2=p.dt-p.kt;html+=`<tr>
+      <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px">${p.name||pid}</span></td>
+      <td class="r" style="color:var(--accent)">${fmt(p.dt)}</td>
+      <td class="r" style="color:var(--red)">${fmt(p.kt)}</td>
+      <td class="${cls(d2)} r">${fmt(d2)}</td></tr>`;});
+    html+='</tbody></table></div>';
+  }
+  const mw=MKS.filter(mn=>(d.byMonth[mn]?.dt||0)+(d.byMonth[mn]?.kt||0)>0);
+  if(mw.length){
+    const maxV=Math.max(...MKS.map(mn=>Math.max(d.byMonth[mn]?.dt||0,d.byMonth[mn]?.kt||0)),1);
+    html+=`<div class="modal-section"><div class="modal-sec-title">Oylar boyicha</div>
+      <table class="ft"><thead><tr><th>Oy</th><th class="r">Dt</th><th class="r">Kt</th><th style="width:90px">Grafik</th></tr></thead><tbody>`;
+    MKS.forEach((mn,i)=>{
+      const dt=d.byMonth[mn]?.dt||0,kt=d.byMonth[mn]?.kt||0;if(!dt&&!kt)return;
+      html+=`<tr><td>${MNS[i]}</td>
+        <td class="r" style="color:var(--accent)">${dt?fmt(dt):'—'}</td>
+        <td class="r" style="color:var(--red)">${kt?fmt(kt):'—'}</td>
+        <td><div style="display:flex;flex-direction:column;gap:2px">
+          ${dt?`<div style="height:5px;width:${Math.min(100,dt/maxV*90)}%;background:var(--accent);border-radius:2px;opacity:0.7"></div>`:''}
+          ${kt?`<div style="height:5px;width:${Math.min(100,kt/maxV*90)}%;background:var(--red);border-radius:2px;opacity:0.7"></div>`:''}
+        </div></td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  }
+  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
+}
+
+
 function closeModal(e) {
   if(!e||e.target===document.getElementById('modalOverlay'))
     document.getElementById('modalOverlay').classList.remove('open');
@@ -1397,10 +1659,9 @@ function toggleFilterDrawer() {
   h.classList.toggle('open',open);
 }
 function syncFilter(fId,tId) {
-  const val = document.getElementById(fId).value;
-  const target = document.getElementById(tId);
-  if(target) target.value = val;
-  // Drawer yopmasdan filter qo'llaymiz
+  const val=document.getElementById(fId)?.value;
+  const t=document.getElementById(tId);
+  if(t&&val!==undefined) t.value=val;
   applyFilter();
 }
 document.addEventListener('click',e=>{
