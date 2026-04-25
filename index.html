@@ -324,7 +324,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 </div>
 
 <script>
-const API='https://script.google.com/macros/s/AKfycbz-7JV9KfgFB3Ufdpi_PTMv6ybeleRTQJDKHbrj8noxXJZRsZcQMBs4QOol6-ejkgFDFg/exec';
+const API='https://script.google.com/macros/s/AKfycbwuwJ9tefQgF4WGK3wdzXYhoWIDfrKvfUSpxgOV8S_qKK_SPMy4k8Uwtw-OUY8g5hEJvg/exec';
 const CK='fd6'; const TTL=10*60*1000;
 let DATA={}; let SETTINGS={firmalar:[],proyektlar:[]}; let ACCS=[];
 let curPage='pnl'; const _m={};
@@ -705,20 +705,49 @@ function showCat(type,cat,label){
   let html='';
   if(type==='bal'){
     const grps=fromOSV(BAL_MAP[cat]||[],r=>(r.sk_dt||0)-(r.sk_kt||0));
-    html=grps.length?grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join(''):'<p style="padding:20px;text-align:center;color:var(--muted)">Malumot yoq. Hisoblar tabini oching.</p>';
+    if(grps.length){
+      html=`<div class="m-sec"><div class="m-sec-t">Hisob kodlari boyicha</div>${grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join('')}</div>`;
+    }else{
+      // OSV yo'q — balans jadvalidan qiymat ko'rsatamiz
+      const balRow=DATA.bal?.active?.concat(DATA.bal?.passive||[]).find(r=>r.category===cat);
+      if(balRow&&balRow.net){
+        html=`<div class="m-sec">
+          <div class="m-kpi" style="margin-bottom:12px">
+            <div class="m-kpi-c"><div class="m-kpi-l">SK Дт</div><div class="m-kpi-v pos">${fmt(balRow.sk_dt)}</div></div>
+            <div class="m-kpi-c"><div class="m-kpi-l">SK Кт</div><div class="m-kpi-v neg">${fmt(balRow.sk_kt)}</div></div>
+            <div class="m-kpi-c"><div class="m-kpi-l">Saldo (net)</div><div class="m-kpi-v ${cls(balRow.net)}">${fmt(balRow.net)}</div></div>
+          </div>
+          <p style="color:var(--muted);font-size:11px;text-align:center;padding:8px">Subkonto detali uchun Hisoblar tabini oching</p>
+        </div>`;
+      }else{
+        html='<p style="padding:20px;text-align:center;color:var(--muted)">Malumot yoq. Hisoblar tabini oching.</p>';
+      }
+    }
   }else if(type==='pnl'){
     const grps=fromOSV(PNL_MAP[cat]||[],r=>{let t=0;MKS.forEach(mn=>{const d=r.months?.[mn]||{dt:0,kt:0};t+=d.dt-d.kt;});return t;});
-    if(!grps.length){
-      const row=DATA.pnl?.data?.find(x=>x.key===cat);
-      if(row){const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
-        html='<div>';MNS.forEach((mn,i)=>{const mk=MKS[i],v=row.months?.[mk]||0;if(!v)return;
-          html+=`<div class="bar-row"><div class="bar-lbl">${mn.slice(0,3)}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,Math.abs(v)/maxV*100)}%;background:${v>=0?'var(--green)':'var(--red)'}"></div></div>
-            <div class="bar-val ${cls(v)}">${fmt(v,true)}</div></div>`;
-        });
-        html+=`<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(row.total)}</div></div>`;
-      }else html='<p style="color:var(--muted);padding:20px;text-align:center">Malumot yoq</p>';
-    }else html=grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join('');
+    // Har doim PNL jadval ma'lumotini ham ko'rsatamiz (oylik grafik)
+    const row=DATA.pnl?.data?.find(x=>x.key===cat);
+    if(row&&row.total){
+      const f2=getF();
+      const mu2=f2.month==='ALL'?MKS:[f2.month];
+      const maxV=Math.max(...mu2.map(mk=>Math.abs(row.months?.[mk]||0)),1);
+      html+=`<div class="m-sec"><div class="m-sec-t">Oylik oborot</div>`;
+      mu2.forEach((mk,i)=>{
+        const v=row.months?.[mk]||0; if(!v)return;
+        const wi=Math.min(100,Math.abs(v)/maxV*100);
+        html+=`<div class="bar-row" style="margin-bottom:8px">
+          <div class="bar-lbl" style="min-width:60px">${MNS[MKS.indexOf(mk)]?.slice(0,3)||mk}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${wi}%;background:${v>=0?'var(--green)':'var(--red)'}"></div></div>
+          <div class="bar-val ${cls(v)}">${fmt(v,true)}</div>
+        </div>`;
+      });
+      html+=`<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(mu2.reduce((s,mk)=>s+(row.months?.[mk]||0),0))}</div></div>`;
+    }
+    if(grps.length){
+      html+=`<div class="m-sec"><div class="m-sec-t">Hisob kodlari boyicha</div>${grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join('')}</div>`;
+    }else if(!row||!row.total){
+      html='<p style="color:var(--muted);padding:20px;text-align:center">Malumot yoq. Hisoblar tabini oching.</p>';
+    }
   }else if(type==='cf'){
     const sec=DATA.cf?.sections?.find(s=>s.key===cat);
     html=sec?.accounts?.filter(a=>a.total).length?
@@ -792,20 +821,71 @@ function showInd(group,name){
   const item=d.indicators?.find(g=>g.group===group)?.items?.find(i=>i.name===name);if(!item)return;
   const s=d.summary||{};
   openModal(name,group);
+  const f3=getF();
   const DET={
-    'Yalpi marja':{f:'Gross/Daromad x 100',kpis:[{l:'Daromad',v:fmt(s.revenue,true)},{l:'Yalpi foyda',v:fmt(s.gross,true)},{l:'Marja',v:item.value}]},
-    'EBIT marja':{f:'EBIT/Daromad x 100',kpis:[{l:'EBIT',v:fmt(s.ebit,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
-    'Sof foyda marja':{f:'Net/Daromad x 100',kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
-    'ROA':{f:'Net/Aktiv x 100',kpis:[{l:'Net',v:fmt(s.net,true)},{l:'Aktiv',v:''},{l:'ROA',v:item.value}]},
-    'ROE':{f:'Net/Kapital x 100',kpis:[{l:'Net',v:fmt(s.net,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'ROE',v:item.value}]},
-    'Debt/Equity':{f:'Qarz/Kapital',kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'D/E',v:item.value}]},
-    'Debt/EBITDA':{f:'Qarz/EBITDA',kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'EBITDA',v:fmt(s.ebitda,true)},{l:'D/EBITDA',v:item.value}]},
+    'Yalpi marja':{f:'Gross / Daromad x 100',good:'>20%',warn:'10-20%',bad:'<10%',
+      kpis:[{l:'Daromad',v:fmt(s.revenue,true)},{l:'Yalpi foyda',v:fmt(s.gross,true)},{l:'Marja',v:item.value}]},
+    'EBIT marja':{f:'EBIT / Daromad x 100',good:'>15%',warn:'5-15%',bad:'<5%',
+      kpis:[{l:'EBIT',v:fmt(s.ebit,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
+    'Sof foyda marja':{f:'Net / Daromad x 100',good:'>10%',warn:'3-10%',bad:'<3%',
+      kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
+    'ROA':{f:'Net / Jami aktiv x 100',good:'>8%',warn:'3-8%',bad:'<3%',
+      kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Jami aktiv',v:fmt(s.tA,true)},{l:'ROA',v:item.value}]},
+    'ROE':{f:'Net / Kapital x 100',good:'>15%',warn:'5-15%',bad:'<5%',
+      kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'ROE',v:item.value}]},
+    'Joriy likvidlik':{f:'Joriy aktiv / Joriy majburiyat',good:'>1.5',warn:'1-1.5',bad:'<1',
+      kpis:[{l:'Joriy aktiv',v:'—'},{l:'Joriy maj.',v:'—'},{l:'Nisbat',v:item.value}]},
+    'Operatsion CF':{f:'Asosiy faoliyatdan pul oqimi',good:'+',warn:'0',bad:'-',
+      kpis:[{l:'CF',v:fmt(s.operCF,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'CF/Rev',v:s.revenue?((s.operCF/s.revenue*100).toFixed(1)+'%'):'—'}]},
+    'Debt / Equity':{f:'Jami qarz / Kapital',good:'<0.5',warn:'0.5-1.5',bad:'>1.5',
+      kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'D/E',v:item.value}]},
+    'Debt / EBITDA':{f:'Jami qarz / EBITDA',good:'<2',warn:'2-3',bad:'>3',
+      kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'EBITDA',v:fmt(s.ebitda,true)},{l:'D/EBITDA',v:item.value}]},
+    'Foiz qoplash':{f:'EBIT / Foiz xarajati',good:'>3',warn:'1.5-3',bad:'<1.5',
+      kpis:[{l:'EBIT',v:fmt(s.ebit,true)},{l:'Foiz xarajat',v:fmt(s.finExp,true)},{l:'ICR',v:item.value}]},
+    'Daromad':{f:'Jami sotuv daromadi',good:'',warn:'',bad:'',
+      kpis:[{l:'Daromad',v:fmt(s.revenue,true)},{l:'Davr',v:f3.month==='ALL'?'Yillik':f3.month},{l:'',v:''}]},
+    'EBITDA':{f:'EBIT + Amortizatsiya (taxminiy)',good:'',warn:'',bad:'',
+      kpis:[{l:'EBIT',v:fmt(s.ebit,true)},{l:'EBITDA',v:fmt(s.ebitda,true)},{l:'Marja',v:s.revenue?(s.ebitda/s.revenue*100).toFixed(1)+'%':'—'}]},
+    'Sof foyda':{f:'Daromad - barcha xarajatlar - soliq',good:'',warn:'',bad:'',
+      kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:s.revenue?(s.net/s.revenue*100).toFixed(1)+'%':'—'}]},
   };
-  const det=DET[name]||{f:item.note||'—',kpis:[{l:'Qiymat',v:item.value},{l:'Tavsif',v:item.note||'—'},{l:'Guruh',v:group}]};
+  const det=DET[name]||{f:item.note||'—',good:'',warn:'',bad:'',
+    kpis:[{l:'Qiymat',v:item.value},{l:'Tavsif',v:item.note||'—'},{l:'Davr',v:f3.month==='ALL'?'Yillik':f3.month}]};
+
+  // Gauge
+  const vn=parseFloat(item.value);
+  let gW=50,gColor='var(--accent)';
+  if(!isNaN(vn)){
+    if(item.value.includes('%'))gW=Math.min(100,Math.abs(vn)*2);
+    else gW=Math.min(100,Math.abs(vn)*25);
+    gColor=vn>0?'var(--green)':vn<0?'var(--red)':'var(--amber)';
+  }
+
   document.getElementById('mBody').innerHTML=`
-    <div class="m-kpi">${det.kpis.map(k=>`<div class="m-kpi-c"><div class="m-kpi-l">${k.l}</div><div class="m-kpi-v">${k.v}</div></div>`).join('')}</div>
-    <div class="m-sec"><div class="m-sec-t">Formula</div><div style="background:var(--bg3);padding:12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:12px">${det.f}</div></div>
-    <div class="m-sec"><div class="m-sec-t">Talqin</div><div style="font-size:12px;line-height:1.6">${item.note||'—'}</div></div>`;
+    <div class="m-kpi">${det.kpis.map(k=>`<div class="m-kpi-c">
+      <div class="m-kpi-l">${k.l}</div>
+      <div class="m-kpi-v">${k.v||'—'}</div>
+    </div>`).join('')}</div>
+    <div class="m-sec"><div class="m-sec-t">Formula</div>
+      <div style="background:var(--bg3);padding:12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:12px">${det.f}</div>
+    </div>
+    <div class="m-sec"><div class="m-sec-t">Joriy qiymat</div>
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+        <div style="font-family:var(--mono);font-size:28px;font-weight:800;${vn>0?'color:var(--green)':vn<0?'color:var(--red)':'color:var(--accent)'}">${item.value}</div>
+        ${det.good?`<div style="font-size:11px;color:var(--muted);line-height:1.6">
+          <div style="color:var(--green)">✅ Yaxshi: ${det.good}</div>
+          <div style="color:var(--amber)">⚠️ O'rta: ${det.warn}</div>
+          <div style="color:var(--red)">❌ Yomon: ${det.bad}</div>
+        </div>`:''}
+      </div>
+      <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${gW}%;background:${gColor};border-radius:4px;transition:width .5s ease"></div>
+      </div>
+    </div>
+    <div class="m-sec"><div class="m-sec-t">Davr</div>
+      <div style="font-size:12px;color:var(--muted)">${f3.firma==='ALL'?'Barcha firmalar':f3.firma} | ${f3.year} | ${f3.month==='ALL'?'Yillik':f3.month}</div>
+    </div>`;
 }
 
 // MODAL
