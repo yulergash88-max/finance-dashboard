@@ -2,1296 +2,629 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>FinDash — Moliyaviy Hisobot</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FinDash 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════════════════ */
 :root{
-  --bg:#0d0f14; --surface:#141720; --surface2:#1c2030;
-  --surface3:#232840; --border:rgba(255,255,255,0.07);
-  --border2:rgba(255,255,255,0.13); --text:#e8eaf0; --muted:#6b7290;
-  --accent:#4f7fff; --accent2:#7c5cfc; --green:#22c55e;
-  --red:#f43f5e; --amber:#f59e0b; --cyan:#06b6d4;
-  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif; --disp:'Syne',sans-serif;
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1a2235;--bg4:#1e293b;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e8eef8;--muted:#6b7fa3;--muted2:#4a5568;
+  --accent:#4f7fff;--accent2:#7c9fff;--cyan:#22d3ee;
+  --green:#34d399;--red:#f87171;--amber:#fbbf24;--violet:#a78bfa;
+  --surface:#141c2e;--surface2:#1e2d47;--surface3:#243558;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);--radius:12px;--radius-sm:8px;--trans:0.18s ease;
+}
+[data-theme=light]{
+  --bg:#f0f4ff;--bg2:#e8eef9;--bg3:#dde5f5;--bg4:#d0daf0;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#1a2340;--muted:#5a6a8a;--muted2:#8a99b8;
+  --surface:#fff;--surface2:#f5f8ff;--surface3:#edf1fb;
+  --shadow:0 4px 24px rgba(79,127,255,0.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom,0)}
-body::before{content:'';position:fixed;inset:0;background:
-  radial-gradient(ellipse 80% 60% at 20% 10%,rgba(79,127,255,0.08) 0%,transparent 60%),
-  radial-gradient(ellipse 60% 50% at 80% 80%,rgba(124,92,252,0.06) 0%,transparent 60%);
-  pointer-events:none;z-index:0}
-
-/* ═══════════════════════════════════════════════════════
-   APP LAYOUT
-═══════════════════════════════════════════════════════ */
-#app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;min-height:100vh;position:relative;z-index:1}
-
-/* iOS Safari: grid fallback */
-@supports not (display:grid){
-  #app{display:flex;flex-direction:column}
-  .topbar{flex-shrink:0}
-  .sidebar{flex-shrink:0}
-  .main{flex:1;overflow-y:auto}
-}
-
-.topbar{
-  grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:0 24px;
-  background:rgba(20,23,32,0.92);border-bottom:1px solid var(--border);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:-webkit-sticky;position:sticky;top:0;z-index:100;
-}
-.logo{font-family:var(--disp);font-size:16px;font-weight:800;letter-spacing:-0.03em;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
-.tb-div{width:1px;height:24px;background:var(--border2);flex-shrink:0}
-.org-name{font-size:12px;color:var(--muted);font-weight:500}
-.filters{display:flex;align-items:center;gap:8px;margin-left:auto}
-select.fsel{
-  background:var(--surface2);border:1px solid var(--border2);color:var(--text);
-  padding:5px 10px;border-radius:6px;font-size:12px;font-family:var(--sans);
-  cursor:pointer;outline:none;transition:border-color 0.15s;
-}
-select.fsel:focus{border-color:var(--accent)}
-.rf-btn{
-  display:flex;align-items:center;gap:6px;padding:6px 12px;
-  border-radius:6px;border:1px solid var(--border2);background:var(--surface2);
-  color:var(--text);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:var(--sans);
-}
-.rf-btn:hover{background:var(--surface3);border-color:var(--accent)}
-.rf-btn .spin{display:inline-block}
-.rf-btn.loading .spin{animation:spin 0.7s linear infinite}
-
-@keyframes spin{to{transform:rotate(360deg)}}
-.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:all 0.3s}
-.sdot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
-.sdot.err{background:var(--red)}
-.sdot.loading{background:var(--amber);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-
-.sidebar{
-  background:var(--surface);border-right:1px solid var(--border);
-  padding:16px 0;display:flex;flex-direction:column;gap:2px;
-  position:-webkit-sticky;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;-webkit-overflow-scrolling:touch;
-}
-.nav-sec{padding:8px 16px 4px;font-size:10px;font-weight:600;color:var(--muted);
-  letter-spacing:0.1em;text-transform:uppercase}
-.nav-it{
-  display:flex;align-items:center;gap:10px;padding:9px 16px;margin:0 8px;
-  border-radius:8px;cursor:pointer;transition:all 0.12s;color:var(--muted);
-  font-size:13px;font-weight:500;
-}
-.nav-it:hover{background:var(--surface2);color:var(--text)}
-.nav-it.active{background:linear-gradient(135deg,rgba(79,127,255,0.15),rgba(124,92,252,0.1));
-  color:var(--accent);border:1px solid rgba(79,127,255,0.2)}
-.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
-.cache-info{padding:16px;margin-top:auto;font-size:10px;color:var(--muted);border-top:1px solid var(--border)}
-
-.main{padding:24px;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
-.sec-title{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-bottom:4px;
-  background:linear-gradient(135deg,var(--text),var(--muted));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sec-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
-
-/* ═══════════════════════════════════════════════════════
-   KPI CARDS
-═══════════════════════════════════════════════════════ */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-.kpi-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  padding:16px;transition:transform 0.15s,border-color 0.15s,box-shadow 0.15s;
-  cursor:default;
-}
-.kpi-card.clickable{cursor:pointer}
-.kpi-card.clickable:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 24px rgba(79,127,255,0.15)}
-.kpi-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
-.kpi-value{font-family:var(--mono);font-size:20px;font-weight:500;line-height:1}
-.kpi-note{font-size:10px;color:var(--muted);margin-top:6px}
-.kpi-arrow{font-size:9px;color:var(--accent);margin-top:4px;opacity:0.6}
-.kpi-value.pos{color:var(--green)} .kpi-value.neg{color:var(--red)} .kpi-value.neu{color:var(--accent)}
-
-/* ═══════════════════════════════════════════════════════
-   TABLES
-═══════════════════════════════════════════════════════ */
-.tw{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
-.thead-row{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.ttitle{font-family:var(--disp);font-size:14px;font-weight:700;letter-spacing:-0.02em}
-.tbadge{font-size:10px;font-family:var(--mono);background:var(--surface3);padding:3px 8px;border-radius:20px;color:var(--muted)}
-table.ft{width:100%;border-collapse:collapse}
-table.ft thead th{padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:0.06em;
-  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-table.ft thead th.r{text-align:right}
-table.ft tbody tr{border-bottom:1px solid var(--border);transition:background 0.08s}
-table.ft tbody tr:last-child{border-bottom:none}
-table.ft tbody tr:hover{background:var(--surface2)}
-table.ft tbody tr.computed{background:rgba(79,127,255,0.04)}
-table.ft tbody tr.computed td{font-weight:600}
-table.ft td{padding:9px 12px;font-size:12px}
-table.ft td.r{text-align:right;font-family:var(--mono);font-size:11px}
-table.ft td.pos{color:var(--green);font-family:var(--mono);text-align:right}
-table.ft td.neg{color:var(--red);font-family:var(--mono);text-align:right}
-table.ft td.mu{color:var(--muted);font-size:11px}
-table.ft tfoot td{border-top:2px solid var(--border2);padding:10px 12px;font-weight:700;font-family:var(--mono);font-size:12px}
-
-/* ═══════════════════════════════════════════════════════
-   BAR CHART
-═══════════════════════════════════════════════════════ */
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.bar-lbl{font-size:11px;color:var(--muted);min-width:120px;text-align:right}
-.bar-track{flex:1;height:18px;background:var(--surface3);border-radius:4px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1)}
-.bf-rev{background:linear-gradient(90deg,#4f7fff,#6c8fff)}
-.bf-net.pos{background:linear-gradient(90deg,#22c55e,#4ade80)}
-.bf-net.neg{background:linear-gradient(90deg,#f43f5e,#fb7185)}
-.bar-val{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:72px}
-
-/* ═══════════════════════════════════════════════════════
-   DK BADGES
-═══════════════════════════════════════════════════════ */
-.dk-b{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;font-family:var(--mono)}
-.dk-b.D{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
-.dk-b.K{background:rgba(244,63,94,0.12);color:var(--red);border:1px solid rgba(244,63,94,0.2)}
-.st-b{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px}
-.st-b.o{background:rgba(245,158,11,0.12);color:var(--amber)}
-.st-b.y{background:rgba(34,197,94,0.12);color:var(--green)}
-
-/* ═══════════════════════════════════════════════════════
-   INDICATORS
-═══════════════════════════════════════════════════════ */
-.ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}
-.ind-group{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
-.ind-g-title{font-family:var(--disp);font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent)}
-.ind-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:8px 10px;border-radius:8px;border-bottom:1px solid var(--border);
-  cursor:pointer;transition:background 0.1s;margin-bottom:2px;
-}
-.ind-row:last-child{border-bottom:none;margin-bottom:0}
-.ind-row:hover{background:var(--surface2)}
-.ind-name{font-size:12px;color:var(--text)}
-.ind-note{font-size:10px;color:var(--muted);margin-top:2px}
-.ind-val{font-family:var(--mono);font-size:14px;font-weight:500}
-.ind-caret{font-size:10px;color:var(--muted);margin-left:6px;opacity:0.5}
-
-/* ═══════════════════════════════════════════════════════
-   BALANCE
-═══════════════════════════════════════════════════════ */
-.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-.bal-sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.bal-sec-title{padding:12px 16px;font-family:var(--disp);font-size:13px;font-weight:700;
-  border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.bal-total{font-family:var(--mono);font-size:16px;font-weight:600}
-
-/* ═══════════════════════════════════════════════════════
-   MODAL (Ko'rsatkichlar detail)
-═══════════════════════════════════════════════════════ */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;
-  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-}
-.modal-overlay.open{display:flex}
-.modal{
-  background:var(--surface);border:1px solid var(--border2);border-radius:18px;
-  width:min(680px,95vw);max-height:85vh;overflow-y:auto;
-  box-shadow:0 32px 100px rgba(0,0,0,0.6);
-  animation:modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
-}
-@keyframes modalIn{from{opacity:0;transform:scale(0.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal-head{
-  padding:20px 24px 16px;border-bottom:1px solid var(--border);
-  display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;
-  background:var(--surface);z-index:1;
-}
-.modal-title{font-family:var(--disp);font-size:18px;font-weight:700;letter-spacing:-0.02em}
-.modal-sub{font-size:11px;color:var(--muted);margin-top:3px}
-.modal-close{
-  width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);
-  background:var(--surface2);color:var(--muted);cursor:pointer;
-  font-size:16px;display:flex;align-items:center;justify-content:center;
-  transition:all 0.15s;flex-shrink:0;
-}
-.modal-close:hover{background:var(--red);color:white;border-color:var(--red)}
-.modal-body{padding:24px}
-.modal-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-.modal-kpi{background:var(--surface2);border-radius:10px;padding:12px;text-align:center}
-.modal-kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px}
-.modal-kpi-val{font-family:var(--mono);font-size:18px;font-weight:500}
-.modal-section{margin-bottom:18px}
-.modal-sec-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
-  letter-spacing:0.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.modal-gauge{margin-bottom:16px}
-.gauge-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
-.gauge-track{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden}
-.gauge-fill{height:100%;border-radius:4px;transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)}
-.gauge-ok{background:linear-gradient(90deg,var(--green),#4ade80)}
-.gauge-warn{background:linear-gradient(90deg,var(--amber),#fbbf24)}
-.gauge-bad{background:linear-gradient(90deg,var(--red),#fb7185)}
-.modal-formula{
-  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-  padding:12px;font-family:var(--mono);font-size:11px;color:var(--cyan);
-  line-height:1.6;margin-bottom:14px;
-}
-.modal-interp{font-size:12px;color:var(--muted);line-height:1.6;padding:10px;
-  background:rgba(79,127,255,0.05);border-radius:8px;border-left:3px solid var(--accent)}
-.modal-trend{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:10px}
-.trend-cell{background:var(--surface2);border-radius:6px;padding:6px;text-align:center}
-.trend-mo{font-size:9px;color:var(--muted)}
-.trend-val{font-family:var(--mono);font-size:11px;margin-top:2px}
-
-/* ═══════════════════════════════════════════════════════
-   ERROR / LOADER
-═══════════════════════════════════════════════════════ */
-.err-box{background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);
-  border-radius:10px;padding:16px;color:var(--red);font-size:12px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow-x:hidden}
+#app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;min-height:100vh}
+@media(max-width:768px){#app{grid-template-columns:1fr;grid-template-rows:56px auto 1fr}}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:grid;place-items:center;font-size:14px;color:#fff}
+.org{font-size:11px;color:var(--muted);margin-left:4px;white-space:nowrap}
+.tb-gap{flex:1}
+.filters{display:flex;align-items:center;gap:8px}
+.fsel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--sans);font-size:11px;padding:5px 10px;border-radius:var(--radius-sm);cursor:pointer;outline:none;transition:border-color var(--trans)}
+.fsel:hover,.fsel:focus{border-color:var(--accent)}
+.btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:var(--sans);font-size:11px;cursor:pointer;transition:all var(--trans);white-space:nowrap}
+.btn:hover{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-p:hover{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background var(--trans);flex-shrink:0}
+.sdot.ok{background:var(--green)}.sdot.err{background:var(--red)}.sdot.loading{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.theme-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:all var(--trans);flex-shrink:0}
+.theme-btn:hover{background:var(--surface2);border-color:var(--accent)}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto}
+.side-sec{padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase}
+.nav-it{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-left:3px solid transparent;transition:all var(--trans);user-select:none}
+.nav-it:hover{background:var(--surface);color:var(--text)}
+.nav-it.active{background:var(--surface);color:var(--accent);border-left-color:var(--accent)}
+.nav-icon{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700}
+.main{overflow-y:auto;padding:24px}
 .page{display:none}.page.active{display:block}
-/* ═══ MOBIL (≤768px) ═══════════════════════════════════════ */
+.ph{margin-bottom:24px}
+.ph-title{font-size:24px;font-weight:800;color:var(--text);margin-bottom:4px}
+.ph-sub{font-size:12px;color:var(--muted)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;transition:all var(--trans);overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);opacity:0;transition:opacity var(--trans)}
+.kpi-card.click{cursor:pointer}
+.kpi-card.click:hover::before{opacity:1}
+.kpi-card.click:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--border2)}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.kpi-val{font-family:var(--mono);font-size:18px;font-weight:700;margin-bottom:4px}
+.kpi-note{font-size:10px;color:var(--muted)}
+.kpi-arr{font-size:10px;color:var(--accent);margin-top:6px;opacity:0;transition:opacity var(--trans)}
+.kpi-card.click:hover .kpi-arr{opacity:1}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--accent)}.mu{color:var(--muted)}
+.tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.tw-hd{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);gap:12px;background:var(--bg2)}
+.tw-title{font-weight:700;font-size:13px;flex:1}
+.tw-sub{font-size:11px;color:var(--muted)}
+.tw-badge{background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;color:var(--muted);font-family:var(--mono)}
+.tw-body{overflow-x:auto}
+.ft{width:100%;border-collapse:collapse;font-size:11px}
+.ft thead th{background:var(--bg3);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);white-space:nowrap}
+.ft tbody tr{border-bottom:1px solid var(--border);transition:background var(--trans)}
+.ft tbody tr:last-child{border-bottom:none}
+.ft tbody tr:hover{background:var(--surface2)}
+.ft td{padding:9px 12px;vertical-align:middle}
+.ft tfoot td{padding:10px 12px;font-weight:700;background:var(--bg3);border-top:1px solid var(--border2)}
+.r{text-align:right}.c{text-align:center}
+.mono{font-family:var(--mono)}
+.code-c{font-family:var(--mono);color:var(--cyan);font-size:10px;font-weight:700}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(79,127,255,0.12);color:var(--accent)}
+.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.bal-grid{grid-template-columns:1fr}}
+.bal-st{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px}
+.bal-tot{font-family:var(--mono);font-size:14px}
+.bal-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--trans)}
+.bal-row:hover{background:var(--surface2)}
+.bal-row:last-child{border-bottom:none}
+.ind-grp{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.ind-gt{padding:12px 16px;font-weight:700;font-size:12px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.ind-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--trans)}
+.ind-row:hover{background:var(--surface2)}
+.ind-row:last-child{border-bottom:none}
+.ind-val{font-family:var(--mono);font-size:16px;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;display:none;place-items:center;padding:20px}
+.overlay.open{display:grid}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:640px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:su .2s ease}
+@keyframes su{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-hd{display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border);gap:12px}
+.modal-title{font-size:16px;font-weight:800;flex:1}
+.modal-sub{font-size:11px;color:var(--muted)}
+.modal-x{width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:grid;place-items:center;font-size:16px;color:var(--muted);transition:all var(--trans);flex-shrink:0}
+.modal-x:hover{background:var(--red);border-color:var(--red);color:#fff}
+.modal-body{overflow-y:auto;padding:20px;flex:1}
+.m-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.m-kpi-c{background:var(--bg3);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.m-kpi-l{font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.m-kpi-v{font-family:var(--mono);font-size:15px;font-weight:700}
+.m-sec{margin-bottom:16px}
+.m-sec-t{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.acc-card{background:var(--bg3);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
+.acc-ch{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)}
+.acc-cr{display:flex;justify-content:space-between;align-items:center;padding:7px 14px 7px 28px;border-bottom:1px solid var(--border)}
+.acc-cr:last-child{border-bottom:none}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bar-lbl{min-width:64px;font-size:10px;color:var(--muted)}
+.bar-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.setup{max-width:600px;margin:40px auto;padding:0 16px}
+.setup-err{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:var(--radius);padding:14px 16px;color:var(--red);font-size:12px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.setup-title{padding:14px 18px;background:var(--bg2);border-bottom:1px solid var(--border);font-weight:700}
+.setup-body{padding:16px 18px}
+.api-box{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;border-left:3px solid var(--accent)}
+.api-url{font-family:var(--mono);font-size:10px;color:var(--cyan);word-break:break-all;margin-top:4px}
+.step{display:flex;gap:12px;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--radius-sm)}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:11px;display:grid;place-items:center;flex-shrink:0}
+.setup-btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.hamburger span{display:block;height:2px;width:22px;background:var(--text);border-radius:2px}
+.drawer{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:none}
+.drawer.open{display:block}
+.drawer-panel{position:absolute;top:0;left:0;bottom:0;width:280px;background:var(--bg2);border-right:1px solid var(--border2);padding:16px;overflow-y:auto;transform:translateX(-100%);transition:transform .25s ease}
+.drawer.open .drawer-panel{transform:translateX(0)}
+.cache-info{font-size:10px;color:var(--muted2);margin-left:4px}
 @media(max-width:768px){
-  /* App layout — sidebar pastda nav bar sifatida */
-  #app{
-    display:flex;flex-direction:column;min-height:100vh;
-    grid-template-columns:unset;grid-template-rows:unset;
-  }
-
-  /* Topbar — kichikroq, faqat logo va hamburger */
-  .topbar{
-    padding:0 12px;gap:8px;height:52px;flex-shrink:0;
-    position:fixed;top:0;left:0;right:0;z-index:200;
-  }
-  .org-name{display:none}
-  .tb-div{display:none}
-
-  /* Filterlar topbarda yashirin — alohida drawer */
-  .filters{display:none}
-
-  /* Hamburger tugma */
-  .hamburger{
-    display:flex;flex-direction:column;gap:4px;
-    width:32px;height:32px;align-items:center;justify-content:center;
-    cursor:pointer;border:1px solid var(--border2);border-radius:8px;
-    background:var(--surface2);flex-shrink:0;margin-left:auto;
-  }
-  .hamburger span{width:16px;height:2px;background:var(--text);border-radius:2px;transition:all 0.2s}
-  .hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
-  .hamburger.open span:nth-child(2){opacity:0}
-  .hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px)}
-
-  /* Sidebar — pastki nav bar */
-  .sidebar{
-    position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;padding-bottom:env(safe-area-inset-bottom,0px);
-    flex-direction:row;padding:6px 4px;border-right:none;
-    border-top:1px solid var(--border2);z-index:200;
-    background:rgba(20,23,32,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-    overflow-x:auto;overflow-y:hidden;flex-shrink:0;
-  }
-  .nav-sec,.cache-info{display:none}
-  .nav-it{
-    flex-direction:column;gap:2px;padding:6px 8px;margin:0 2px;
-    min-width:56px;text-align:center;font-size:10px;
-    border-radius:10px;
-  }
-  .nav-it.active{border:1px solid rgba(79,127,255,0.3)}
-  .nav-icon{font-size:20px;width:auto}
-
-  /* Main — topbar va bottombar orasida */
-  .main{
-    margin-top:52px;
-    margin-bottom:calc(68px + env(safe-area-inset-bottom,0px));
-    padding:12px;
-    overflow-y:auto;
-    flex:1;
-    min-height:0;
-  }
-
-  /* Filter drawer */
-  .filter-drawer{
-    position:fixed;top:52px;left:0;right:0;z-index:150;
-    background:rgba(20,23,32,0.98);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--border2);padding:12px;
-    display:flex;flex-wrap:wrap;gap:8px;max-height:calc(100vh - 60px);overflow:auto;
-    transform:translateY(-120%);transition:transform 0.25s ease;
-  }
-  .filter-drawer.open{transform:translateY(0)}
-  .filter-drawer select.fsel{flex:1;min-width:140px}
-  .filter-drawer .rf-btn,.filter-drawer .logout-btn{flex-shrink:0}
-
-  /* Refresh va logout — drawer ichida */
-  .topbar .rf-btn,.topbar .logout-btn{display:none}
-
-  /* KPI kartalar — 2 ustun */
-  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
-  .kpi-card{padding:12px}
-  .kpi-value{font-size:16px}
-
-  /* Jadval — horizontal scroll */
-  .tw{overflow-x:auto}
-  table.ft{min-width:500px}
-  table.ft td{padding:7px 8px;font-size:11px}
-  table.ft thead th{padding:7px 8px;font-size:9px}
-
-  /* Balans grid */
-  .bal-grid{grid-template-columns:1fr}
-
-  /* Ind grid */
-  .ind-grid{grid-template-columns:1fr;gap:10px}
-  .ind-row{padding:8px 6px}
-
-  /* Bar chart */
-  .bar-lbl{min-width:60px;font-size:10px}
-  .bar-val{min-width:56px;font-size:10px}
-
-  /* Section title */
-  .sec-title{font-size:18px}
-  .sec-sub{font-size:11px;margin-bottom:12px}
-
-  /* Modal — full screen mobilda */
-  .modal{width:100%;max-height:90vh;border-radius:18px 18px 0 0;margin-top:auto}
-  .modal-overlay{align-items:flex-end}
-  .modal-kpi-row{grid-template-columns:repeat(2,1fr)}
-
-  /* Login box */
-  .login-box{width:calc(100vw - 32px);padding:28px 20px}
-
-  /* DK jadval scroll */
-  #dk-table{overflow-x:auto}
+  .sidebar{display:none}.hamburger{display:flex}.filters{display:none}.org{display:none}
+  .bal-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.main{padding:16px}
 }
 
-/* Hamburger desktop da yashirin */
-.hamburger{display:none}
-.filter-drawer{display:none}
-@media(max-width:768px){
-  .hamburger{display:flex}
-  .filter-drawer{display:flex}
+/* ═══ LOGIN ════════════════════════════════════════════ */
+#login{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
 }
-@media(min-width:769px){
-  .filter-drawer{display:none !important}
+#login.hidden{display:none}
+.login-box{
+  width:100%;max-width:380px;padding:0 24px;
 }
+.login-logo{
+  display:flex;align-items:center;gap:10px;
+  font-weight:800;font-size:20px;color:var(--accent);
+  margin-bottom:32px;justify-content:center;
+}
+.login-logo-icon{
+  width:36px;height:36px;background:var(--accent);
+  border-radius:10px;display:grid;place-items:center;
+  font-size:18px;color:#fff;
+}
+.login-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:16px;padding:28px;
+}
+.login-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--muted);margin-bottom:24px}
+.login-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.login-input{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);font-family:var(--mono);font-size:14px;
+  padding:10px 14px;border-radius:var(--radius-sm);outline:none;
+  transition:border-color var(--trans);margin-bottom:16px;
+}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{
+  width:100%;padding:11px;background:var(--accent);border:none;
+  color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;
+  border-radius:var(--radius-sm);cursor:pointer;
+  transition:background var(--trans);
+}
+.login-btn:hover{background:var(--accent2)}
+.login-err{
+  font-size:11px;color:var(--red);margin-top:10px;
+  min-height:16px;text-align:center;
+}
+.login-hint{font-size:10px;color:var(--muted2);margin-top:16px;text-align:center}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.shake{animation:shake .4s ease}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════
-     MAIN APP
-═══════════════════════════════════════════════════════ -->
-<div id="app">
+<div id="login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📊</div>
+      FinDash 2026
+    </div>
+    <div class="login-card">
+      <div class="login-title">Kirish</div>
+      <div class="login-sub">Moliyaviy Hisobot Tizimi</div>
+      <div class="login-label">Parol</div>
+      <input class="login-input" id="pwInput" type="password"
+        placeholder="Parolni kiriting"
+        onkeydown="if(event.key==='Enter')doLogin()"
+        autofocus>
+      <button class="login-btn" onclick="doLogin()">Kirish →</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-hint">Parolni tizim administratoridan oling</div>
+    </div>
+  </div>
+</div>
 
+<div id="app">
 <header class="topbar">
-  <div class="logo">📊 FinDash</div>
-  <div class="tb-div"></div>
-  <div class="org-name" id="orgName">Moliyaviy Hisobot Tizimi</div>
+  <div class="logo"><div class="logo-icon">📊</div>FinDash</div>
+  <span class="org" id="orgName">Moliyaviy Hisobot Tizimi</span>
+  <div class="tb-gap"></div>
   <div class="filters">
     <select class="fsel" id="fFirma" onchange="applyFilter()"><option value="ALL">Barcha firmalar</option></select>
-    <select class="fsel" id="fProject" onchange="applyFilter()"><option value="ALL">Barcha proyektlar</option></select>
-    <select class="fsel" id="fYear" onchange="applyFilter()">
-      <option value="2026" selected>2026</option>
-      <option value="2025">2025</option>
-      <option value="2024">2024</option>
-    </select>
+    <select class="fsel" id="fProj" onchange="applyFilter()"><option value="ALL">Barcha proyektlar</option></select>
+    <select class="fsel" id="fYear" onchange="applyFilter()"><option value="2026" selected>2026</option><option value="2025">2025</option></select>
     <select class="fsel" id="fMonth" onchange="applyFilter()">
       <option value="ALL">Barcha oylar</option>
-      <option value="yanv">Yanvar</option><option value="fevr">Fevral</option>
-      <option value="mart">Mart</option><option value="apr">Aprel</option>
-      <option value="may">May</option><option value="iyun">Iyun</option>
-      <option value="iyul">Iyul</option><option value="avg">Avgust</option>
-      <option value="sent">Sentabr</option><option value="okt">Oktabr</option>
-      <option value="noy">Noyabr</option><option value="dek">Dekabr</option>
+      <option value="yanv">Yanvar</option><option value="fevr">Fevral</option><option value="mart">Mart</option>
+      <option value="apr">Aprel</option><option value="may">May</option><option value="iyun">Iyun</option>
+      <option value="iyul">Iyul</option><option value="avg">Avgust</option><option value="sent">Sentabr</option>
+      <option value="okt">Oktabr</option><option value="noy">Noyabr</option><option value="dek">Dekabr</option>
     </select>
-    <div class="sdot loading" id="sdot"></div>
-    <button class="rf-btn" id="rfBtn" onclick="loadAll(true)">
-      <span class="spin">↻</span> Yangilash
-    </button>
+    <div class="sdot" id="sdot"></div>
+    <span class="cache-info" id="cinfo"></span>
+    <button class="btn" onclick="loadAll(true)">↻ Yangilash</button>
   </div>
-  <!-- Mobil: hamburger -->
-  <div class="hamburger" id="hamburger" onclick="toggleFilterDrawer()">
-    <span></span><span></span><span></span>
-  </div>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  <div class="hamburger" id="hamburger" onclick="openDr()"><span></span><span></span><span></span></div>
 </header>
 
-<!-- Mobil filter drawer -->
-<div class="filter-drawer" id="filterDrawer">
-  <select class="fsel" id="fFirma2" onchange="syncFilter('fFirma2','fFirma')"><option value="ALL">Barcha firmalar</option></select>
-  <select class="fsel" id="fProject2" onchange="syncFilter('fProject2','fProject')"><option value="ALL">Barcha proyektlar</option></select>
-  <select class="fsel" id="fYear2" onchange="syncFilter('fYear2','fYear')">
-    <option value="2026" selected>2026</option>
-    <option value="2025">2025</option>
-    <option value="2024">2024</option>
-  </select>
-  <select class="fsel" id="fMonth2" onchange="syncFilter('fMonth2','fMonth')">
-    <option value="ALL">Barcha oylar</option>
-    <option value="yanv">Yanvar</option><option value="fevr">Fevral</option>
-    <option value="mart">Mart</option><option value="apr">Aprel</option>
-    <option value="may">May</option><option value="iyun">Iyun</option>
-    <option value="iyul">Iyul</option><option value="avg">Avgust</option>
-    <option value="sent">Sentabr</option><option value="okt">Oktabr</option>
-    <option value="noy">Noyabr</option><option value="dek">Dekabr</option>
-  </select>
-  <button class="rf-btn" onclick="loadAll(true);toggleFilterDrawer()">↻ Yangilash</button>
+<div class="drawer" id="drawer" onclick="closeDrOut(event)">
+  <div class="drawer-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong>Filtrlar</strong>
+      <button onclick="closeDr()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <select class="fsel" id="fFirma2" onchange="syncF('fFirma2','fFirma')"><option value="ALL">Barcha firmalar</option></select>
+      <select class="fsel" id="fProj2" onchange="syncF('fProj2','fProj')"><option value="ALL">Barcha proyektlar</option></select>
+      <select class="fsel" id="fYear2" onchange="syncF('fYear2','fYear')"><option value="2026" selected>2026</option><option value="2025">2025</option></select>
+      <select class="fsel" id="fMonth2" onchange="syncF('fMonth2','fMonth')">
+        <option value="ALL">Barcha oylar</option>
+        <option value="yanv">Yanvar</option><option value="fevr">Fevral</option><option value="mart">Mart</option>
+        <option value="apr">Aprel</option><option value="may">May</option><option value="iyun">Iyun</option>
+        <option value="iyul">Iyul</option><option value="avg">Avgust</option><option value="sent">Sentabr</option>
+        <option value="okt">Oktabr</option><option value="noy">Noyabr</option><option value="dek">Dekabr</option>
+      </select>
+      <button class="btn btn-p" onclick="applyFilter();closeDr()">Qollash</button>
+    </div>
+    <div id="mobNav"></div>
+  </div>
 </div>
 
 <nav class="sidebar">
-  <div class="nav-sec">Hisobotlar</div>
-  <div class="nav-it active" onclick="switchPage('pnl',this)"><span class="nav-icon">📈</span> PNL</div>
-  <div class="nav-it" onclick="switchPage('cashflow',this)"><span class="nav-icon">💸</span> Cash Flow</div>
-  <div class="nav-it" onclick="switchPage('balance',this)"><span class="nav-icon">⚖️</span> Balans</div>
-  <div class="nav-it" onclick="switchPage('dk',this)"><span class="nav-icon">🤝</span> Debitor/Kreditor</div>
-  <div class="nav-it" onclick="switchPage('indicators',this)"><span class="nav-icon">🎯</span> Ko'rsatkichlar</div>
-  <div class="nav-it" onclick="switchPage('accounts',this)"><span class="nav-icon">📒</span> Hisoblar</div>
-  <div class="cache-info" id="cacheInfo">—</div>
+  <div class="side-sec">Hisobotlar</div>
+  <div class="nav-it active" onclick="goPage('pnl',this)"><span class="nav-icon">📈</span>PNL</div>
+  <div class="nav-it" onclick="goPage('cf',this)"><span class="nav-icon">💸</span>Cash Flow</div>
+  <div class="nav-it" onclick="goPage('bal',this)"><span class="nav-icon">⚖️</span>Balans</div>
+  <div class="nav-it" onclick="goPage('dk',this)"><span class="nav-icon">🤝</span>Debitor / Kreditor</div>
+  <div class="nav-it" onclick="goPage('ind',this)"><span class="nav-icon">🎯</span>Korsatkichlar</div>
+  <div class="nav-it" onclick="goPage('acc',this)"><span class="nav-icon">📒</span>Hisoblar <span class="nav-badge" id="accB">—</span></div>
 </nav>
 
-<main class="main" id="main">
+<main class="main" id="mainEl">
   <div class="page active" id="page-pnl">
-    <div class="sec-title">Foyda va Zarar</div>
-    <div class="sec-sub" id="pnl-sub"></div>
+    <div class="ph"><div class="ph-title">Foyda va Zarar</div><div class="ph-sub" id="pnl-sub"></div></div>
     <div class="kpi-grid" id="pnl-kpi"></div>
-    <div id="pnl-bar"></div>
-    <div class="tw"><div class="thead-row"><div class="ttitle">PNL Tafsiloti</div><div class="tbadge" id="pnl-badge">—</div></div><div id="pnl-table"></div></div>
+    <div class="tw"><div class="tw-hd"><div class="tw-title">PNL Tafsiloti</div><div class="tw-sub" id="pnl-period"></div></div><div class="tw-body"><div id="pnl-tbl"></div></div></div>
   </div>
-
-  <div class="page" id="page-cashflow">
-    <div class="sec-title">Pul Oqimi (Cash Flow)</div>
-    <div class="sec-sub" id="cf-sub"></div>
-    <div class="kpi-grid" id="cf-kpi"></div>
-    <div id="cf-table"></div>
+  <div class="page" id="page-cf">
+    <div class="ph"><div class="ph-title">Cash Flow</div><div class="ph-sub" id="cf-sub"></div></div>
+    <div class="kpi-grid" id="cf-kpi"></div><div id="cf-secs"></div>
   </div>
-
-  <div class="page" id="page-balance">
-    <div class="sec-title">Balans</div>
-    <div class="sec-sub" id="bal-sub"></div>
-    <div class="kpi-grid" id="bal-kpi"></div>
-    <div class="bal-grid" id="bal-sections"></div>
+  <div class="page" id="page-bal">
+    <div class="ph"><div class="ph-title">Balans</div><div class="ph-sub" id="bal-sub"></div></div>
+    <div class="kpi-grid" id="bal-kpi"></div><div class="bal-grid" id="bal-secs"></div>
   </div>
-
   <div class="page" id="page-dk">
-    <div class="sec-title">Debitor / Kreditor</div>
-    <div class="sec-sub" id="dk-sub"></div>
-    <div class="kpi-grid" id="dk-kpi"></div>
-    <div class="tw"><div class="thead-row"><div class="ttitle">Operatsiyalar</div><div class="tbadge" id="dk-badge">—</div></div><div id="dk-table"></div></div>
+    <div class="ph"><div class="ph-title">Debitor / Kreditor</div><div class="ph-sub" id="dk-sub"></div></div>
+    <div class="kpi-grid" id="dk-kpi"></div><div id="dk-body"></div>
   </div>
-
-  <div class="page" id="page-indicators">
-    <div class="sec-title">Moliyaviy Ko'rsatkichlar</div>
-    <div class="sec-sub" id="ind-sub"></div>
-    <div class="kpi-grid" id="ind-kpi"></div>
-    <div class="ind-grid" id="ind-groups"></div>
+  <div class="page" id="page-ind">
+    <div class="ph"><div class="ph-title">Korsatkichlar</div><div class="ph-sub" id="ind-sub"></div></div>
+    <div class="kpi-grid" id="ind-kpi"></div><div id="ind-grps"></div>
   </div>
-  <div class="page" id="page-accounts">
-    <div class="sec-title">Hisoblar ro'yxati</div>
-    <div class="sec-sub" id="acc-sub">Barcha hisoblar — proyekt va detalli ko'rinish</div>
+  <div class="page" id="page-acc">
+    <div class="ph"><div class="ph-title">Hisoblar (OSV)</div><div class="ph-sub" id="acc-sub"></div></div>
     <div class="kpi-grid" id="acc-kpi"></div>
     <div class="tw">
-      <div class="thead-row">
-        <div class="ttitle">Hisoblar</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="accSearch" placeholder="Kod yoki nom..." oninput="filterAccounts()"
-            style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border2);
-            border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;width:180px">
-          <div class="tbadge" id="acc-badge">—</div>
-        </div>
+      <div class="tw-hd">
+        <div class="tw-title">Barcha hisoblar</div>
+        <span class="tw-badge" id="accB2">—</span>
+        <input id="accSrch" placeholder="Qidirish..." oninput="filterAcc()"
+          style="margin-left:auto;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:5px 10px;border-radius:var(--radius-sm);font-size:11px;font-family:var(--sans);outline:none;width:180px">
       </div>
-      <div id="acc-table"></div>
+      <div class="tw-body"><div id="acc-tbl"></div></div>
     </div>
   </div>
 </main>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     MODAL
-═══════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal" id="modalBox">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="modalTitle">—</div>
-        <div class="modal-sub" id="modalSub">—</div>
-      </div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <div><div class="modal-title" id="mTitle"></div><div class="modal-sub" id="mSub"></div></div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
     </div>
-    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-body" id="mBody"></div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════════════════════
-const API = 'https://script.google.com/macros/s/AKfycbweawoiutc0yNBrB8ykScWvnOrXBIegNd1nSf07Fp7LKy85rBOtqo8LqJz5-LYKMwQSwA/exec';
+const API='https://script.google.com/macros/s/AKfycbz-7JV9KfgFB3Ufdpi_PTMv6ybeleRTQJDKHbrj8noxXJZRsZcQMBs4QOol6-ejkgFDFg/exec';
+const CK='fd6'; const TTL=10*60*1000;
+let DATA={}; let SETTINGS={firmalar:[],proyektlar:[]}; let ACCS=[];
+let curPage='pnl'; const _m={};
+const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
+const MNS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 
-const CACHE_KEY = 'fd_cache';
-const CACHE_TTL = 10 * 60 * 1000;
+// THEME
+function initTheme(){const t=localStorage.getItem('fd_th')||'dark';applyTh(t);}
+function applyTh(t){document.documentElement.setAttribute('data-theme',t==='light'?'light':'');document.getElementById('themeBtn').textContent=t==='light'?'🌙':'☀️';localStorage.setItem('fd_th',t);}
+function toggleTheme(){const c=document.documentElement.getAttribute('data-theme');applyTh(c==='light'?'dark':'light');}
 
-let DATA = {};
-let SETTINGS = { firmalar:[], proyektlar:[] };
-let currentPage = 'pnl';
+// FORMAT
+function fmt(v,sh=false){if(v===null||v===undefined||v==='')return'—';const n=Number(v);if(isNaN(n))return String(v);if(sh){if(Math.abs(n)>=1e9)return(n/1e9).toFixed(1)+' mlrd';if(Math.abs(n)>=1e6)return(n/1e6).toFixed(1)+' mln';if(Math.abs(n)>=1e3)return(n/1e3).toFixed(0)+' ming';return n.toFixed(0);}return new Intl.NumberFormat('uz-UZ').format(Math.round(n));}
+function cls(v){return Number(v)>0?'pos':Number(v)<0?'neg':'mu';}
+function pct(v){return(Number(v)>=0?'+':'')+Number(v).toFixed(1)+'%';}
 
-// ═══════════════════════════════════════════════════════
-// UTILITIES
-// ═══════════════════════════════════════════════════════
-function fmt(v, short=false) {
-  if (v===null||v===undefined||v==='') return '—';
-  const n = Number(v); if (isNaN(n)) return String(v);
-  if (short) {
-    if (Math.abs(n)>=1e9) return (n/1e9).toFixed(1)+' mlrd';
-    if (Math.abs(n)>=1e6) return (n/1e6).toFixed(1)+' mln';
-    if (Math.abs(n)>=1e3) return (n/1e3).toFixed(0)+' ming';
-    return n.toFixed(0);
-  }
-  return new Intl.NumberFormat('uz-UZ').format(Math.round(n));
-}
-function cls(v) { return Number(v)>0?'pos':Number(v)<0?'neg':'mu'; }
-function pct(v) { return (Number(v)>=0?'+':'')+Number(v).toFixed(1)+'%'; }
-
-// ═══════════════════════════════════════════════════════
 // CACHE
-// ═══════════════════════════════════════════════════════
-// In-memory kesh (localStorage ishlamasa ham ishlaydi)
-const _memCache = {};
-function saveCache(key, data) {
-  _memCache[key] = { t: Date.now(), d: data };
-  try { localStorage.setItem(CACHE_KEY+'_'+key, JSON.stringify({ t: Date.now(), d: data })); } catch {}
-}
-function loadCache(key) {
-  // Avval memory dan
-  if (_memCache[key] && Date.now() - _memCache[key].t < CACHE_TTL) return _memCache[key].d;
-  // Keyin localStorage dan
-  try {
-    const c = JSON.parse(localStorage.getItem(CACHE_KEY+'_'+key)||'null');
-    if (!c) return null;
-    if (Date.now() - c.t > CACHE_TTL) return null;
-    _memCache[key] = c;
-    return c.d;
-  } catch { return null; }
-}
-function cacheAge(key) {
-  try {
-    const m = _memCache[key]; if(m) return Math.round((Date.now()-m.t)/1000);
-    const c = JSON.parse(localStorage.getItem(CACHE_KEY+'_'+key)||'null');
-    if (!c) return null;
-    return Math.round((Date.now() - c.t) / 1000);
-  } catch { return null; }
-}
+function saveC(k,d){_m[k]={t:Date.now(),d};try{localStorage.setItem(CK+'_'+k,JSON.stringify({t:Date.now(),d}))}catch{}}
+function loadC(k){if(_m[k]&&Date.now()-_m[k].t<TTL)return _m[k].d;try{const c=JSON.parse(localStorage.getItem(CK+'_'+k)||'null');if(!c||Date.now()-c.t>TTL)return null;_m[k]=c;return c.d;}catch{return null;}}
+function cAge(k){const c=_m[k];if(!c)return null;return Math.round((Date.now()-c.t)/1000);}
 
-// ═══════════════════════════════════════════════════════
 // API
-// ═══════════════════════════════════════════════════════
-function callAPI(params) {
-  const url = API + '?' + new URLSearchParams(params).toString();
-  return fetch(url, { cache: 'no-store' }).then(r => r.json());
-}
+async function callAPI(p){const url=API+'?'+new URLSearchParams(p).toString();const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+function setStatus(s){const d=document.getElementById('sdot');d.className='sdot '+(s==='ok'?'ok':s==='err'?'err':'loading');}
 
-function getFilters() {
-  return {
-    firma:   document.getElementById('fFirma').value,
-    project: document.getElementById('fProject').value,
-    year:    document.getElementById('fYear').value,
-    month:   document.getElementById('fMonth').value,
-  };
-}
-
-function applyFilter() { loadAll(true); }
-
-function setStatus(s) {
-  document.getElementById('sdot').className = 'sdot ' + s;
-  document.getElementById('rfBtn').classList.toggle('loading', s==='loading');
-}
-
-function updateFilterOptions() {
-  const pairs = [
-    ['fFirma','fFirma2',
-     SETTINGS.firmalar.filter(f=>f.active),
-     '<option value="ALL">Barcha firmalar</option>',
-     f=>`<option value="${f.id}">${f.name||f.id}</option>`],
-    ['fProject','fProject2',
-     SETTINGS.proyektlar.filter(p=>p.id&&p.name),
-     '<option value="ALL">Barcha proyektlar</option>',
-     p=>`<option value="${p.id}">${p.name} (${p.firma})</option>`],
+// FILTERS
+function getF(){return{firma:document.getElementById('fFirma').value,project:document.getElementById('fProj').value,year:document.getElementById('fYear').value,month:document.getElementById('fMonth').value};}
+function syncF(f,t){const v=document.getElementById(f)?.value;const el=document.getElementById(t);if(el&&v!==undefined)el.value=v;applyFilter();}
+function applyFilter(){loadAll(true);}
+function updateFlt(){
+  const pairs=[
+    ['fFirma','fFirma2',SETTINGS.firmalar.filter(f=>f.active),'<option value="ALL">Barcha firmalar</option>',f=>`<option value="${f.id}">${f.name}</option>`],
+    ['fProj','fProj2',SETTINGS.proyektlar,'<option value="ALL">Barcha proyektlar</option>',p=>`<option value="${p.id}">${p.name}</option>`],
   ];
-  pairs.forEach(([deskId,mobId,items,def,rowFn])=>{
-    const html = def + items.map(rowFn).join('');
-    [deskId,mobId].forEach(id=>{
-      const el=document.getElementById(id);
-      if(!el) return;
-      const cur=el.value;
-      el.innerHTML=html;
-      el.value=cur;
-    });
-  });
+  pairs.forEach(([d,m,items,def,fn])=>{const h=def+items.map(fn).join('');[d,m].forEach(id=>{const el=document.getElementById(id);if(!el)return;const c=el.value;el.innerHTML=h;el.value=c;});});
 }
 
-// ═══════════════════════════════════════════════════════
-// LOAD ALL — BITTA SO'ROV + KESH
-// ═══════════════════════════════════════════════════════
-async function loadAll(forceRefresh=false) {
+// LOAD
+async function loadAll(force=false){
   setStatus('loading');
-  const f = getFilters();
-  const cacheKey = JSON.stringify(f);
+  const f=getF();const ck=JSON.stringify(f);
+  if(!force){const c=loadC(ck);if(c){DATA=c.data||{};SETTINGS=c.settings||{firmalar:[],proyektlar:[]};updateFlt();if(c.org)document.getElementById('orgName').textContent=c.org;const age=cAge(ck);document.getElementById('cinfo').textContent=age?`${age}s oldin`:'';render();setStatus('ok');return;}}
+  try{
+    const ping=await Promise.race([callAPI({action:'ping'}),new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout')),15000))]);
+    if(!ping?.ok){showSetup('API javob bermadi');setStatus('err');return;}
+    const [rawS,raw]=await Promise.all([callAPI({action:'settings'}).catch(e=>({_e:e.message})),callAPI({action:'all',...f}).catch(e=>({_e:e.message}))]);
+    if(rawS&&!rawS._e&&!rawS.error){SETTINGS={firmalar:Array.isArray(rawS.firmalar)?rawS.firmalar:[],proyektlar:Array.isArray(rawS.proyektlar)?rawS.proyektlar:[]};updateFlt();const act=SETTINGS.firmalar.filter(x=>x.active);if(act.length)document.getElementById('orgName').textContent=act.map(x=>x.short||x.id).join(' | ');}
+    if(!raw||raw._e||raw.error){showSetup('API xato: '+(raw?._e||raw?.error||'Noma\'lum'));setStatus('err');return;}
+    DATA={pnl:raw.pnl||{error:'PNL yoq'},cf:raw.cashflow||{error:'CF yoq'},bal:raw.balance||{error:'Balans yoq'},ind:raw.indicators||{indicators:[],summary:{}},osv:{}};
+    const org=document.getElementById('orgName').textContent;saveC(ck,{data:DATA,settings:SETTINGS,org});document.getElementById('cinfo').textContent='yangilandi';render();setStatus('ok');
+  }catch(e){showSetup('Xato: '+e.message);setStatus('err');}
+}
+async function loadOSV(){setStatus('loading');const f=getF();try{const r=await callAPI({action:'osv_all',year:f.year});if(r?.osv)DATA.osv=r.osv;}catch{}setStatus('ok');}
 
-  // Keshdan
-  if (!forceRefresh) {
-    const cached = loadCache(cacheKey);
-    if (cached && cached.data && cached.settings) {
-      DATA = cached.data;
-      SETTINGS = cached.settings;
-      updateFilterOptions();
-      if (cached.orgName) document.getElementById('orgName').textContent = cached.orgName;
-      document.getElementById('cacheInfo').textContent = `🟡 Kesh: ${cacheAge(cacheKey)||0}s oldin`;
-      renderCurrent(); setStatus('ok'); return;
-    }
-  }
-
-  // API tekshiruv
-  let pingOk = false;
-  try {
-    const p = await Promise.race([
-      callAPI({action:'ping'}),
-      new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout 15s')),15000))
-    ]);
-    pingOk = p && p.ok;
-    if(pingOk) console.log('Ping OK:', p.time);
-    else console.warn('Ping failed:', p);
-  } catch(e) {
-    console.error('Ping error:', e.message);
-  }
-
-  if (!pingOk) {
-    setStatus('err');
-    showSetupGuide('API javob bermadi (15s).<br>Apps Script deploy qilinganmi?<br><small>'+API.slice(0,80)+'</small>');
-    return;
-  }
-
-  try {
-    // Settings va all — parallel
-    console.log('Loading: settings + all, filters:', f);
-    const t0=Date.now();
-    const [rawS, raw] = await Promise.all([
-      callAPI({action:'settings'}).catch(e=>({_err:e.message})),
-      callAPI({action:'all', ...f}).catch(e=>({_err:e.message})),
-    ]);
-    console.log('Loaded in', Date.now()-t0, 'ms', {rawS, raw});
-
-    // Settings
-    if (rawS && !rawS._err && !rawS.error) {
-      SETTINGS = {
-        firmalar:   Array.isArray(rawS.firmalar)   ? rawS.firmalar   : [],
-        proyektlar: Array.isArray(rawS.proyektlar) ? rawS.proyektlar : [],
-      };
-      updateFilterOptions();
-      const act = SETTINGS.firmalar.filter(x=>x.active);
-      if (act.length) document.getElementById('orgName').textContent = act.map(x=>x.short||x.id).join(' | ');
-    } else {
-      console.warn('Settings yuklanmadi:', rawS?._err||rawS?.error);
-    }
-
-    // All
-    if (!raw || raw._err || raw.error) {
-      const msg = raw?._err || raw?.error || 'Noma\u02BBlum xato';
-      // Xato bo'lsa ham bo'sh hisobotlar bilan ishlashga ruxsat
-      if (msg.includes('Settings') || msg.includes('sheet') || msg.includes('Sheet')) {
-        showSetupGuide('Google Sheets bosh yoki tuzilmasi xato: ' + msg);
-        setStatus('err'); return;
-      }
-      // Boshqa xato — ko'rsatamiz lekin davom etamiz
-      console.error('all xato:', msg);
-      DATA = { pnl:{error:msg}, cf:{error:msg}, bal:{error:msg}, ind:{indicators:[],summary:{}}, osv:{} };
-    } else {
-      DATA = {
-        pnl: raw.pnl        || {error:'PNL yoq'},
-        cf:  raw.cashflow   || {error:'CF yoq'},
-        bal: raw.balance    || {error:'Balans yoq'},
-        ind: raw.indicators || {indicators:[],summary:{}},
-        osv: raw.osv        || {},
-      };
-    }
-
-    const orgName = document.getElementById('orgName').textContent;
-    saveCache(cacheKey, {data:DATA, settings:SETTINGS, orgName});
-    document.getElementById('cacheInfo').textContent = `🟢 ${new Date().toLocaleTimeString()}`;
-    renderCurrent(); setStatus('ok');
-
-  } catch(e) {
-    setStatus('err');
-    showSetupGuide('Kutilmagan xato: ' + e.message);
-  }
+// NAV
+function goPage(p,el){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-it').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p)?.classList.add('active');if(el)el.classList.add('active');
+  document.querySelectorAll('#mobNav .nav-it').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`#mobNav [data-p="${p}"]`)?.classList.add('active');
+  curPage=p;
+  if(['dk','acc','bal'].includes(p)&&!Object.keys(DATA.osv||{}).length){loadOSV().then(render);}else{render();}
+}
+function render(){const map={pnl:rPNL,cf:rCF,bal:rBal,dk:rDK,ind:rInd,acc:rAcc};const fn=map[curPage];if(fn)try{fn();}catch(e){console.error(curPage,e);}}
+function buildMobNav(){
+  const items=[{p:'pnl',i:'📈',l:'PNL'},{p:'cf',i:'💸',l:'Cash Flow'},{p:'bal',i:'⚖️',l:'Balans'},{p:'dk',i:'🤝',l:'Debitor/Kreditor'},{p:'ind',i:'🎯',l:'Korsatkichlar'},{p:'acc',i:'📒',l:'Hisoblar'}];
+  document.getElementById('mobNav').innerHTML=items.map(it=>`<div class="nav-it ${curPage===it.p?'active':''}" data-p="${it.p}" onclick="goPage('${it.p}',this);closeDr()"><span class="nav-icon">${it.i}</span>${it.l}</div>`).join('');
 }
 
-
-// ═══════════════════════════════════════════════════════
-// PAGE SWITCH
-// ═══════════════════════════════════════════════════════
-function switchPage(page, el) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-it').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  if (el) el.classList.add('active');
-  currentPage = page;
-  // DK va Hisoblar uchun OSV lazim — yuklanmagan bo'lsa yuklaymiz
-  if ((page==='dk'||page==='accounts') && !Object.keys(DATA.osv||{}).length) {
-    loadOSV().then(renderCurrent);
-  } else {
-    renderCurrent();
-  }
-}
-
-async function loadOSV() {
-  const f = getFilters();
-  setStatus('loading');
-  try {
-    const raw = await callAPI({ action:'osv_all', year:f.year });
-    if (raw && raw.osv) DATA.osv = raw.osv;
-  } catch(e) {}
-  setStatus('ok');
-}
-function renderCurrent() {
-  if (!DATA.pnl) {
-    console.warn('DATA.pnl yoq — render chaqirilmaydi');
-    return;
-  }
-  const renders = {
-    pnl:renderPNL, cashflow:renderCF, balance:renderBal,
-    dk:renderDK, indicators:renderInd, accounts:renderAccounts
-  };
-  const fn=renders[currentPage];
-  if(fn) { try { fn(); } catch(e){ console.error('Render xato ('+currentPage+'):', e); showErrIn('pnl-table',e.message); } }
-}
-
-// ═══════════════════════════════════════════════════════
 // PNL
-// ═══════════════════════════════════════════════════════
-function renderPNL() {
-  const d = DATA.pnl; if (!d||d.error){showErrIn('pnl-table',d?.error);return;}
-  const f = getFilters();
-  document.getElementById('pnl-sub').textContent =
-    `PNL — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year} | ${f.month==='ALL'?'Yil jami':'Oy: '+f.month}`;
-
-  const get = k => d.data?.find(x=>x.key===k)?.total||0;
-  const rev=get('revenue'),gross=get('gross'),ebit=get('ebit'),net=get('net'),cost=get('cost');
-
-  document.getElementById('pnl-kpi').innerHTML = [
-    { label:'Daromad', val:fmt(rev,true), c:'neu', note:'Jami sotuv daromadi', cat:'revenue' },
-    { label:'Yalpi foyda', val:fmt(gross,true), c:cls(gross), note:rev?pct(gross/rev*100):'', cat:'gross' },
-    { label:'EBIT', val:fmt(ebit,true), c:cls(ebit), note:'Operatsion foyda', cat:'ebit' },
-    { label:'Sof foyda', val:fmt(net,true), c:cls(net), note:rev?pct(net/rev*100):'', cat:'net' },
-    { label:'Xarajatlar', val:fmt(cost,true), c:'neg', note:'Tannarx', cat:'cost' },
-  ].map(k=>`<div class="kpi-card clickable" onclick="showCategoryDetail('pnl','${k.cat}','${k.label}')">
-    <div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div>
-    ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
-    <div class="kpi-arrow">&#x2197; Hisoblar</div>
+function rPNL(){
+  const d=DATA.pnl;if(!d||d.error){showErr('pnl-tbl',d?.error);return;}
+  const f=getF();
+  const g=k=>d.data?.find(x=>x.key===k)?.total||0;
+  const rev=g('revenue'),gross=g('gross'),ebit=g('ebit'),net=g('net'),cost=g('cost');
+  document.getElementById('pnl-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  document.getElementById('pnl-period').textContent=f.month==='ALL'?'Yillik jami':MNS[MKS.indexOf(f.month)]||f.month;
+  document.getElementById('pnl-kpi').innerHTML=[
+    {l:'Daromad',v:fmt(rev,true),c:'neu',n:'Jami sotuv',cat:'revenue'},
+    {l:'Yalpi foyda',v:fmt(gross,true),c:cls(gross),n:rev?pct(gross/rev*100):'',cat:'gross'},
+    {l:'EBIT',v:fmt(ebit,true),c:cls(ebit),n:'Operatsion foyda',cat:'ebit'},
+    {l:'Sof foyda',v:fmt(net,true),c:cls(net),n:rev?pct(net/rev*100):'',cat:'net'},
+    {l:'Tannarx',v:fmt(cost,true),c:'neg',n:'Ishlab chiqarish',cat:'cost'},
+  ].map(k=>`<div class="kpi-card click" onclick="showCat('pnl','${k.cat}','${k.l}')">
+    <div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div>
+    ${k.n?`<div class="kpi-note">${k.n}</div>`:''}
+    <div class="kpi-arr">Batafsil</div>
   </div>`).join('');
-
-  // Bar chart
-  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const months = d.months||[];
-  if (f.month==='ALL'&&months.length>1) {
-    const maxV = Math.max(...MKS.map(mk=>Math.abs(d.data?.find(x=>x.key==='revenue')?.months?.[mk]||0)),1);
-    let bh='<div class="tw" style="padding:16px;margin-bottom:16px"><div class="ttitle" style="margin-bottom:12px">📊 Oylik ko\'rsatkichlar</div>';
-    months.forEach((mn,i)=>{
-      const mk=MKS[i];
-      const rv=d.data?.find(x=>x.key==='revenue')?.months?.[mk]||0;
-      const nt=d.data?.find(x=>x.key==='net')?.months?.[mk]||0;
-      bh+=`<div class="bar-row"><div class="bar-lbl">${mn}</div>
-        <div class="bar-track"><div class="bar-fill bf-rev" style="width:${Math.min(100,Math.abs(rv)/maxV*100)}%"></div></div>
-        <div class="bar-val">${fmt(rv,true)}</div></div>
-        <div class="bar-row" style="margin-top:-2px;margin-bottom:8px">
-        <div class="bar-lbl" style="font-size:10px">Sof</div>
-        <div class="bar-track" style="height:7px"><div class="bar-fill bf-net ${nt>=0?'pos':'neg'}" style="width:${Math.min(100,Math.abs(nt)/maxV*100)}%"></div></div>
-        <div class="bar-val ${cls(nt)}">${fmt(nt,true)}</div></div>`;
-    });
-    document.getElementById('pnl-bar').innerHTML = bh+'</div>';
-  } else { document.getElementById('pnl-bar').innerHTML=''; }
-
-  document.getElementById('pnl-badge').textContent = `${d.data?.length||0} qator`;
-  const MKS2=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  let html=`<table class="ft"><thead><tr><th>Ko'rsatkich</th>`;
-  if (f.month==='ALL') months.forEach(m=>{html+=`<th class="r">${m}</th>`;});
-  html+=`<th class="r">Jami</th></tr></thead><tbody>`;
-  (d.data||[]).forEach(row=>{
-    html+=`<tr class="${row.computed?'computed':''}"><td>${row.label}</td>`;
-    if (f.month==='ALL') MKS2.forEach(mk=>{
-      const v=row.months?.[mk]||0;
-      html+=`<td class="${cls(v)}">${v?fmt(v):'—'}</td>`;
-    });
-    html+=`<td class="${cls(row.total)}">${fmt(row.total)}</td></tr>`;
+  const mu=f.month==='ALL'?MKS:[f.month];
+  const PO=['revenue','cost','gross','opex','ebit','fin_income','fin_expense','ebt','tax','net'];
+  const PL={revenue:'Daromad',cost:'Tannarx',gross:'Yalpi foyda',opex:'Operatsion xarajat',ebit:'EBIT',fin_income:'Moliyaviy daromad',fin_expense:'Moliyaviy xarajat',ebt:'EBT',tax:'Soliq',net:'Sof foyda'};
+  const PB=['gross','ebit','ebt','net'];
+  let h=`<table class="ft"><thead><tr><th>Korsatkich</th>${mu.map(m=>`<th class="r">${MNS[MKS.indexOf(m)]||m}</th>`).join('')}<th class="r">JAMI</th></tr></thead><tbody>`;
+  (d.data||[]).filter(r=>PO.includes(r.key)).sort((a,b)=>PO.indexOf(a.key)-PO.indexOf(b.key)).forEach(row=>{
+    const bold=PB.includes(row.key);
+    if(bold&&row.key!=='net')h+=`<tr style="height:2px"><td colspan="${mu.length+2}" style="background:var(--border);padding:0"></td></tr>`;
+    h+=`<tr style="${bold?'background:var(--bg3);':''}" onclick="showCat('pnl','${row.key}','${PL[row.key]||row.key}')">
+      <td style="${bold?'font-weight:700;':''}">${PL[row.key]||row.key}</td>
+      ${mu.map(m=>`<td class="${cls(row.months?.[m]||0)} r mono">${fmt(row.months?.[m]||0)}</td>`).join('')}
+      <td class="${cls(row.total)} r mono" style="font-weight:700">${fmt(row.total)}</td>
+    </tr>`;
   });
-  document.getElementById('pnl-table').innerHTML=html+'</tbody></table>';
+  document.getElementById('pnl-tbl').innerHTML=h+'</tbody></table>';
 }
 
-// ═══════════════════════════════════════════════════════
-// CASH FLOW
-// ═══════════════════════════════════════════════════════
-function renderCF() {
-  const d=DATA.cf; if(!d||d.error){showErrIn('cf-table',d?.error);return;}
-  const f=getFilters();
-  document.getElementById('cf-sub').textContent=`CashFlow — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
-  const secs=d.sections||[];
-  const opCF=secs.find(s=>s.key==='operating')?.total||0;
-  const invCF=secs.find(s=>s.key==='investing')?.total||0;
-  const finCF=secs.find(s=>s.key==='financing')?.total||0;
-  const netCF=d.netTotal||0;
-
+// CF
+function rCF(){
+  const d=DATA.cf;if(!d||d.error){showErr('cf-secs',d?.error);return;}
+  const f=getF();const secs=d.sections||[];
+  const gS=k=>secs.find(s=>s.key===k)?.total||0;
+  const opCF=gS('operating'),invCF=gS('investing'),finCF=gS('financing');
+  document.getElementById('cf-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
   document.getElementById('cf-kpi').innerHTML=[
-    {label:'Operatsion CF',val:fmt(opCF,true),c:cls(opCF),note:'Asosiy faoliyat',click:'cf_op'},
-    {label:'Investitsion CF',val:fmt(invCF,true),c:cls(invCF),note:'Investitsiyalar',click:'cf_inv'},
-    {label:'Moliyaviy CF',val:fmt(finCF,true),c:cls(finCF),note:'Kreditlar',click:'cf_fin'},
-    {label:'Net CF',val:fmt(netCF,true),c:cls(netCF),note:'Jami o\'zgarish',click:'cf_net'},
-  ].map(k=>`<div class="kpi-card clickable" onclick="showKpiDetail('${k.click}')">
-    <div class="kpi-label">${k.label}</div><div class="kpi-value ${k.c}">${k.val}</div>
-    <div class="kpi-note">${k.note}</div><div class="kpi-arrow">↗ Tafsilot</div>
+    {l:'Operatsion CF',v:fmt(opCF,true),c:cls(opCF),n:'Asosiy faoliyat',cat:'operating'},
+    {l:'Investitsion CF',v:fmt(invCF,true),c:cls(invCF),n:'Investitsiyalar',cat:'investing'},
+    {l:'Moliyaviy CF',v:fmt(finCF,true),c:cls(finCF),n:'Kreditlar',cat:'financing'},
+    {l:'Net CF',v:fmt(d.netTotal||0,true),c:cls(d.netTotal),n:'Jami',cat:'net'},
+  ].map(k=>`<div class="kpi-card click" onclick="showCat('cf','${k.cat}','${k.l}')">
+    <div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div>
+    <div class="kpi-note">${k.n}</div><div class="kpi-arr">Batafsil</div>
   </div>`).join('');
-
-  let html='';
-  secs.forEach(sec=>{
-    html+=`<div class="tw" style="margin-bottom:16px">
-      <div class="thead-row"><div class="ttitle">${sec.label}</div>
-      <div class="tbadge ${cls(sec.total)}">${fmt(sec.total,true)}</div></div>
-      <table class="ft"><thead><tr><th>Hisob</th><th class="r">Kod</th><th class="r">Summa</th></tr></thead><tbody>`;
-    (sec.accounts||[]).forEach(acc=>{
-      const t=Object.values(acc.months||{}).reduce((s,v)=>s+v,0);
-      if(!t)return;
-      html+=`<tr><td>${acc.name}</td><td class="mu">${acc.code}</td><td class="${cls(t)}">${fmt(t)}</td></tr>`;
-    });
-    html+=`</tbody><tfoot><tr><td colspan="2"><b>Jami</b></td><td class="${cls(sec.total)}">${fmt(sec.total)}</td></tr></tfoot></table></div>`;
-  });
-  html+=`<div class="tw"><div class="thead-row"><div class="ttitle" style="font-size:16px">Sof pul oqimi</div>
-    <div class="kpi-value ${cls(netCF)}" style="font-size:18px">${fmt(netCF)}</div></div></div>`;
-  document.getElementById('cf-table').innerHTML=html;
-}
-
-// ═══════════════════════════════════════════════════════
-// BALANS
-// ═══════════════════════════════════════════════════════
-function renderBal() {
-  const d=DATA.bal; if(!d||d.error){showErrIn('bal-sections',d?.error);return;}
-  const f=getFilters();
-  document.getElementById('bal-sub').textContent=`Balans — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year} yil oxiri`;
-  const cap=(d.passive||[]).find(p=>p.category==='Kapital')?.net||0;
-  document.getElementById('bal-kpi').innerHTML=[
-    {label:'Jami Aktiv',val:fmt(d.totalActive,true),c:'neu',note:'Barcha aktivlar'},
-    {label:'Jami Passiv',val:fmt(d.totalPassive,true),c:'neu',note:'Majburiyat+kapital'},
-    {label:'Tenglik',val:d.balanced?'✓ Tenglik':'⚠ Farq',c:d.balanced?'pos':'neg',note:d.balanced?'A=P':'Tekshiring'},
-    {label:'Kapital',val:fmt(cap,true),c:'pos',note:'O\'z mablag\'lari'},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
-
-  function bsec(title,rows,total){
-    let h=`<div class="bal-sec"><div class="bal-sec-title"><span>${title}</span>
-      <span class="bal-total ${cls(total)}">${fmt(total,true)}</span></div>
-      <table class="ft"><thead><tr><th>Kategoriya</th><th class="r">Summa</th></tr></thead><tbody>`;
-    rows.forEach(r=>{if(!r.net)return;h+=`<tr style="cursor:pointer" onclick="showCategoryDetail('bal','${r.category}','${r.category}')">
-      <td>${r.category}</td><td class="${cls(r.net)} r">${fmt(r.net)}</td>
-      <td style="width:20px;color:var(--muted);text-align:center">›</td></tr>`;});
-    h+=`</tbody><tfoot><tr><td><b>Jami</b></td><td class="${cls(total)}">${fmt(total)}</td></tr></tfoot></table></div>`;
-    return h;
-  }
-  document.getElementById('bal-sections').innerHTML=
-    bsec('⬆️ AKTIV',d.active||[],d.totalActive)+bsec('⬇️ PASSIV',d.passive||[],d.totalPassive);
-}
-
-// ═══════════════════════════════════════════════════════
-// DEBITOR/KREDITOR
-// ═══════════════════════════════════════════════════════
-function renderDK() {
-  const f=getFilters();
-  const osvData=DATA.osv||{};
-  document.getElementById('dk-sub').textContent=
-    `Debitor va Kreditor hisoblar | ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
-
-  // Aniq guruhlar
-  const GROUPS = [
-    {
-      id:'xaridorlar',
-      label:'🛒 Xaridorlar va buyurtmachilar',
-      deb:['4010','4000'],
-      kred:['6310','6300']
-    },
-    {
-      id:'yetkazib',
-      label:'🚚 Yetkazib beruvchilar va pudratchilar',
-      deb:['4310','4300','4315'],
-      kred:['6010','6000','6015']
-    },
-    {
-      id:'moliyaviy',
-      label:'💰 Moliyaviy yordam (kreditlar va qarzlar)',
-      deb:['5820','5800','5810'],
-      kred:['6820','6800','6810','7810','7800']
-    },
-    {
-      id:'boshqa',
-      label:'📋 Boshqa debitor va kreditorlar',
-      deb:['4200','4210','4600','4610'],
-      kred:['6700','6710','6900','6920','6990']
-    },
-  ];
-
-  // OSV dan barcha hisoblarni yig'ish
-  const accData = {}; // code -> {name, project, firma, sn_dt, sn_kt, sk_dt, sk_kt}
-  Object.entries(osvData).forEach(([firmaId, osv]) => {
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
-    (osv.rows||[]).forEach(row => {
-      if(f.project!=='ALL'&&row.project!==f.project)return;
-      const key = row.code+'|'+firmaId+'|'+(row.project||'');
-      if(!accData[key]) accData[key]={
-        code:row.code, name:row.name, project:row.project||'—',
-        firma:firmaId, sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0
-      };
-      accData[key].sn_dt+=row.sn_dt||0; accData[key].sn_kt+=row.sn_kt||0;
-      accData[key].sk_dt+=row.sk_dt||0; accData[key].sk_kt+=row.sk_kt||0;
-    });
-  });
-  const allRows = Object.values(accData);
-
-  // Guruh bo'yicha ajratish
-  let totalDeb=0, totalKred=0, totalGrupsHtml='';
-
-  GROUPS.forEach(grp => {
-    const debRows = allRows.filter(r => grp.deb.includes(r.code) && (r.sk_dt||r.sk_kt||r.sn_dt||r.sn_kt));
-    const kredRows = allRows.filter(r => grp.kred.includes(r.code) && (r.sk_dt||r.sk_kt||r.sn_dt||r.sn_kt));
-    if(!debRows.length && !kredRows.length) return;
-
-    const grpDebTotal  = debRows.reduce((s,r)=>s+Math.max(0,(r.sk_dt||0)-(r.sk_kt||0)),0);
-    const grpKredTotal = kredRows.reduce((s,r)=>s+Math.max(0,(r.sk_kt||0)-(r.sk_dt||0)),0);
-    totalDeb  += grpDebTotal;
-    totalKred += grpKredTotal;
-
-    const buildRows = (rows, isDeb) => rows.map(r => {
-      const net = (r.sk_dt||0)-(r.sk_kt||0);
-      return `<tr>
-        <td style="font-family:var(--mono);color:var(--cyan);font-size:11px">${r.code}</td>
-        <td>${r.name}</td>
-        <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);
-          padding:1px 6px;border-radius:4px;font-size:10px">${r.project}</span></td>
-        <td class="mu" style="font-size:11px">${r.firma}</td>
-        <td class="r">${r.sn_dt?fmt(r.sn_dt):'—'}</td>
-        <td class="r">${r.sn_kt?fmt(r.sn_kt):'—'}</td>
-        <td class="r">${r.sk_dt?fmt(r.sk_dt):'—'}</td>
-        <td class="r">${r.sk_kt?fmt(r.sk_kt):'—'}</td>
-        <td class="${cls(net)} r"><b>${fmt(Math.abs(net))}</b></td>
-      </tr>`;
-    }).join('');
-
-    totalGrupsHtml += `
-    <div class="tw" style="margin-bottom:16px">
-      <div class="thead-row">
-        <div class="ttitle">${grp.label}</div>
-        <div style="display:flex;gap:10px;align-items:center">
-          ${grpDebTotal?`<span style="color:var(--green);font-family:var(--mono);font-size:12px">Deb: ${fmt(grpDebTotal,true)}</span>`:''}
-          ${grpKredTotal?`<span style="color:var(--red);font-family:var(--mono);font-size:12px">Kred: ${fmt(grpKredTotal,true)}</span>`:''}
-        </div>
+  const ICO={operating:'🔄',investing:'🏗',financing:'🏦'};
+  document.getElementById('cf-secs').innerHTML=secs.map(s=>`
+    <div class="tw" style="margin-bottom:12px">
+      <div class="tw-hd" style="cursor:pointer" onclick="showCat('cf','${s.key}','${s.label}')">
+        <div class="tw-title">${ICO[s.key]||''} ${s.label}</div>
+        <div class="tw-sub ${cls(s.total)} mono">${fmt(s.total)}</div>
       </div>
-      <table class="ft"><thead><tr>
-        <th>Kod</th><th>Nomi</th><th>Proyekt</th><th>Firma</th>
-        <th class="r">SN Дт</th><th class="r">SN Кт</th>
-        <th class="r">SK Дт</th><th class="r">SK Кт</th>
-        <th class="r">Saldo</th>
-      </tr></thead><tbody>
-      ${debRows.length ? `<tr><td colspan="9" style="background:rgba(34,197,94,0.06);color:var(--green);font-size:10px;font-weight:700;padding:5px 12px;letter-spacing:0.06em">DEBITORLAR</td></tr>${buildRows(debRows,true)}` : ''}
-      ${kredRows.length ? `<tr><td colspan="9" style="background:rgba(244,63,94,0.06);color:var(--red);font-size:10px;font-weight:700;padding:5px 12px;letter-spacing:0.06em">KREDITORLAR</td></tr>${buildRows(kredRows,false)}` : ''}
+      <table class="ft"><tbody>
+        ${(s.accounts||[]).filter(a=>a.total).map(a=>`<tr><td class="code-c">${a.code}</td><td>${a.name}</td><td class="${cls(a.total)} r mono">${fmt(a.total)}</td></tr>`).join('')}
       </tbody></table>
-    </div>`;
-  });
-
-  // KPI
-  document.getElementById('dk-badge').textContent = `${allRows.length} ta`;
-  document.getElementById('dk-kpi').innerHTML=[
-    {label:'Jami debitorlar',val:fmt(totalDeb,true),c:'pos',note:'Bizga qarzdorlar'},
-    {label:'Jami kreditorlar',val:fmt(totalKred,true),c:'neg',note:'Biz qarzdormiz'},
-    {label:'Sof pozitsiya',val:fmt(totalDeb-totalKred,true),c:cls(totalDeb-totalKred),note:'Deb − Kred'},
-    {label:'Jami hisoblar',val:allRows.length,c:'neu',note:'OSV dan'},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
-
-  document.getElementById('dk-table').innerHTML = totalGrupsHtml ||
-    `<p style="padding:24px;text-align:center;color:var(--muted)">OSV da 4xxx/6xxx hisoblar bo'yicha ma'lumot yo'q</p>`;
+    </div>`).join('');
 }
 
-// ═══════════════════════════════════════════════════════
+// BALANS
+function rBal(){
+  const d=DATA.bal;if(!d||d.error){showErr('bal-secs',d?.error);return;}
+  const f=getF();
+  document.getElementById('bal-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  document.getElementById('bal-kpi').innerHTML=[
+    {l:'Jami aktiv',v:fmt(d.totalActive,true),c:'pos',n:''},
+    {l:'Jami passiv',v:fmt(Math.abs(d.totalPassive||0),true),c:'neg',n:''},
+    {l:'Kapital',v:fmt(d.passive?.find(p=>p.category==='Kapital')?.net||0,true),c:'pos',n:''},
+    {l:'Balans',v:d.balanced?'Balanslangan':'Balanssiz',c:d.balanced?'pos':'neg',n:'Aktiv = Passiv'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-note">${k.n}</div></div>`).join('');
+  const sec=(title,rows,total)=>`<div class="tw">
+    <div class="bal-st"><span>${title}</span><span class="bal-tot ${cls(total)}">${fmt(total)}</span></div>
+    ${rows.filter(r=>r.net).map(r=>`<div class="bal-row" onclick="showCat('bal','${r.category}','${r.category}')">
+      <span>${r.category}</span><span class="mono ${cls(r.net)}" style="font-weight:700">${fmt(r.net)}</span>
+    </div>`).join('')}
+  </div>`;
+  document.getElementById('bal-secs').innerHTML=sec('AKTIV',d.active||[],d.totalActive)+sec('PASSIV',d.passive||[],d.totalPassive);
+}
+
+// DK
+function rDK(){
+  const f=getF();const osv=DATA.osv||{};
+  document.getElementById('dk-sub').textContent=`OSV dan | ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+  const GR=[
+    {l:'Xaridorlar va buyurtmachilar',d:['4010','4000'],k:['6310','6300']},
+    {l:'Yetkazib beruvchilar',d:['4310','4300','4315'],k:['6010','6000','6015']},
+    {l:'Moliyaviy yordam',d:['5820','5800','5810'],k:['6820','6800','6810','7810','7800']},
+    {l:'Boshqa',d:['4200','4210','4600','4610'],k:['6700','6710','6900','6920','6990']},
+  ];
+  const acc={};
+  Object.entries(osv).forEach(([fId,ov])=>{
+    if(!ov||ov.error)return;
+    if(f.firma!=='ALL'&&fId!==f.firma)return;
+    (ov.rows||[]).forEach(r=>{
+      if(f.project!=='ALL'&&r.project!==f.project)return;
+      const kk=r.code+'|'+fId+'|'+(r.project||'');
+      if(!acc[kk])acc[kk]={code:r.code,name:r.name,project:r.project||'',firma:fId,sk_dt:0,sk_kt:0};
+      acc[kk].sk_dt+=r.sk_dt||0;acc[kk].sk_kt+=r.sk_kt||0;
+    });
+  });
+  const rows=Object.values(acc);let totD=0,totK=0,html='';
+  GR.forEach(g=>{
+    const dr=rows.filter(r=>g.d.includes(r.code)&&(r.sk_dt||r.sk_kt));
+    const kr=rows.filter(r=>g.k.includes(r.code)&&(r.sk_dt||r.sk_kt));
+    if(!dr.length&&!kr.length)return;
+    const gD=dr.reduce((s,r)=>s+Math.max(0,(r.sk_dt||0)-(r.sk_kt||0)),0);
+    const gK=kr.reduce((s,r)=>s+Math.max(0,(r.sk_kt||0)-(r.sk_dt||0)),0);
+    totD+=gD;totK+=gK;
+    const bR=rs=>rs.map(r=>{const net=(r.sk_dt||0)-(r.sk_kt||0);return`<tr onclick="showAccDet('${r.code}')">
+      <td class="code-c">${r.code}</td><td>${r.name}</td>
+      <td><span class="tag">${r.project||'—'}</span></td><td class="mu c">${r.firma}</td>
+      <td class="${r.sk_dt?'pos':''} r mono">${r.sk_dt?fmt(r.sk_dt):'—'}</td>
+      <td class="${r.sk_kt?'neg':''} r mono">${r.sk_kt?fmt(r.sk_kt):'—'}</td>
+      <td class="${cls(net)} r mono"><strong>${fmt(Math.abs(net))}</strong></td>
+    </tr>`;}).join('');
+    html+=`<div class="tw" style="margin-bottom:14px">
+      <div class="tw-hd"><div class="tw-title">${g.l}</div>
+        <div style="display:flex;gap:8px">
+          ${gD?`<span style="color:var(--green);font-family:var(--mono);font-size:11px">Deb:${fmt(gD,true)}</span>`:''}
+          ${gK?`<span style="color:var(--red);font-family:var(--mono);font-size:11px">Kred:${fmt(gK,true)}</span>`:''}
+        </div></div>
+      <table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th>Proyekt</th><th>Firma</th>
+        <th class="r">SK Dt</th><th class="r">SK Kt</th><th class="r">Saldo</th></tr></thead><tbody>
+      ${dr.length?`<tr><td colspan="7" style="padding:5px 12px;font-size:10px;font-weight:700;color:var(--green);background:rgba(52,211,153,0.05)">DEBITORLAR</td></tr>${bR(dr)}`:''}
+      ${kr.length?`<tr><td colspan="7" style="padding:5px 12px;font-size:10px;font-weight:700;color:var(--red);background:rgba(248,113,113,0.05)">KREDITORLAR</td></tr>${bR(kr)}`:''}
+      </tbody></table></div>`;
+  });
+  document.getElementById('dk-kpi').innerHTML=[
+    {l:'Debitorlar',v:fmt(totD,true),c:'pos',n:'Bizga qarzdorlar'},
+    {l:'Kreditorlar',v:fmt(totK,true),c:'neg',n:'Biz qarzdormiz'},
+    {l:'Sof',v:fmt(totD-totK,true),c:cls(totD-totK),n:'Deb - Kred'},
+    {l:'Hisoblar',v:rows.length,c:'neu',n:'OSV dan'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-note">${k.n}</div></div>`).join('');
+  document.getElementById('dk-body').innerHTML=html||`<p style="padding:40px;text-align:center;color:var(--muted)">Avval Hisoblar tabini oching</p>`;
+}
+
 // INDICATORS
-// ═══════════════════════════════════════════════════════
-function renderInd() {
-  const d=DATA.ind; if(!d||d.error){showErrIn('ind-groups',d?.error);return;}
-  const f=getFilters(), s=d.summary||{};
-  document.getElementById('ind-sub').textContent=`Ko'rsatkichlar — ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
+function rInd(){
+  const d=DATA.ind;if(!d)return;
+  const f=getF();const s=d.summary||{};
+  document.getElementById('ind-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
   document.getElementById('ind-kpi').innerHTML=[
-    {label:'Daromad',val:fmt(s.revenue,true),c:'neu'},
-    {label:'Yalpi foyda',val:fmt(s.gross,true),c:cls(s.gross)},
-    {label:'EBITDA',val:fmt(s.ebitda,true),c:cls(s.ebitda)},
-    {label:'Sof foyda',val:fmt(s.net,true),c:cls(s.net)},
-    {label:'Kapital',val:fmt(s.capital,true),c:'pos'},
-    {label:'Qarz',val:fmt(s.debt,true),c:'neg'},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div></div>`).join('');
+    {l:'Daromad',v:fmt(s.revenue,true),c:'neu'},
+    {l:'Yalpi foyda',v:fmt(s.gross,true),c:cls(s.gross)},
+    {l:'EBITDA',v:fmt(s.ebitda,true),c:cls(s.ebitda)},
+    {l:'Sof foyda',v:fmt(s.net,true),c:cls(s.net)},
+    {l:'Kapital',v:fmt(s.capital,true),c:'pos'},
+    {l:'Qarz',v:fmt(s.debt,true),c:'neg'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div></div>`).join('');
   let html='';
-  (d.indicators||[]).forEach(grp=>{
-    html+=`<div class="ind-group"><div class="ind-g-title">${grp.group}</div>`;
-    grp.items.forEach(item=>{
-      const vNum=parseFloat(item.value), vc=isNaN(vNum)?'':vNum>0?'pos':vNum<0?'neg':'';
-      const iKey=`${grp.group}::${item.name}`;
-      html+=`<div class="ind-row" onclick="showIndicatorDetail(${JSON.stringify(iKey)})">
-        <div><div class="ind-name">${item.name}</div><div class="kpi-note">${item.note||''}</div></div>
-        <div style="display:flex;align-items:center;gap:4px">
-          <div class="ind-val ${vc}">${item.value}</div><span class="ind-caret">›</span>
-        </div></div>`;
+  (d.indicators||[]).forEach(g=>{
+    html+=`<div class="ind-grp"><div class="ind-gt">${g.group}</div>`;
+    g.items.forEach(item=>{
+      const vn=parseFloat(item.value);const vc=isNaN(vn)?'':vn>0?'pos':vn<0?'neg':'';
+      html+=`<div class="ind-row" onclick="showInd('${g.group}','${item.name}')">
+        <div><div style="font-size:12px">${item.name}</div><div style="font-size:10px;color:var(--muted)">${item.note||''}</div></div>
+        <div style="display:flex;align-items:center"><div class="ind-val ${vc}">${item.value}</div><span style="color:var(--muted);margin-left:8px">›</span></div>
+      </div>`;
     });
     html+='</div>';
   });
-  document.getElementById('ind-groups').innerHTML=html;
+  document.getElementById('ind-grps').innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════════════
-// HISOBLAR SAHIFASI
-// ═══════════════════════════════════════════════════════
-function renderAccounts() {
-  const f=getFilters();
+// HISOBLAR
+function rAcc(){
+  const f=getF();const osv=DATA.osv||{};
   document.getElementById('acc-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
-  const osvData=DATA.osv||{};
-  ALL_ACCOUNTS=[];
-  const accMap={};
-  const MONTHS_K=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  Object.entries(osvData).forEach(([firmaId,osv])=>{
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
-    (osv.rows||[]).forEach(row=>{
-      if(f.project!=='ALL'&&row.project!==f.project)return;
-      if(!accMap[row.code])accMap[row.code]={code:row.code,name:row.name,
-        sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,projects:{}};
-      const a=accMap[row.code];
-      a.sn_dt+=row.sn_dt||0;a.sn_kt+=row.sn_kt||0;
-      a.sk_dt+=row.sk_dt||0;a.sk_kt+=row.sk_kt||0;
-      if(!a.projects[row.project])a.projects[row.project]={dt:0,kt:0};
-      MONTHS_K.forEach(mn=>{
-        const d=row.months?.[mn]||{dt:0,kt:0};
-        a.total_dt+=d.dt;a.total_kt+=d.kt;
-        a.projects[row.project].dt+=d.dt;a.projects[row.project].kt+=d.kt;
-      });
+  ACCS=[];const m={};
+  Object.entries(osv).forEach(([fId,ov])=>{
+    if(!ov||ov.error)return;
+    if(f.firma!=='ALL'&&fId!==f.firma)return;
+    (ov.rows||[]).forEach(r=>{
+      if(f.project!=='ALL'&&r.project!==f.project)return;
+      if(!m[r.code])m[r.code]={code:r.code,name:r.name,sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0};
+      const a=m[r.code];
+      a.sn_dt+=r.sn_dt||0;a.sn_kt+=r.sn_kt||0;a.sk_dt+=r.sk_dt||0;a.sk_kt+=r.sk_kt||0;
+      MKS.forEach(mn=>{const d=r.months?.[mn]||{dt:0,kt:0};a.total_dt+=d.dt;a.total_kt+=d.kt;});
     });
   });
-  ALL_ACCOUNTS=Object.values(accMap);
-  const withData=ALL_ACCOUNTS.filter(a=>a.total_dt||a.total_kt||a.sn_dt||a.sn_kt||a.sk_dt||a.sk_kt);
-  const totalDt=ALL_ACCOUNTS.reduce((s,a)=>s+a.total_dt,0);
-  const totalKt=ALL_ACCOUNTS.reduce((s,a)=>s+a.total_kt,0);
+  ACCS=Object.values(m);
+  const active=ACCS.filter(a=>a.total_dt||a.total_kt||a.sn_dt||a.sn_kt||a.sk_dt||a.sk_kt);
+  ['accB','accB2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ACCS.length+'ta';});
   document.getElementById('acc-kpi').innerHTML=[
-    {label:'Jami hisoblar',val:ALL_ACCOUNTS.length,c:'neu',note:'Barcha счётlar'},
-    {label:'Faol hisoblar',val:withData.length,c:'pos',note:'Oborot bor'},
-    {label:'Jami Дт oborot',val:fmt(totalDt,true),c:'neu',note:'Barcha debet'},
-    {label:'Jami Кт oborot',val:fmt(totalKt,true),c:'neu',note:'Barcha kredit'},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
-  document.getElementById('acc-badge').textContent=`${ALL_ACCOUNTS.length} ta`;
-  buildAccountTable(ALL_ACCOUNTS);
+    {l:'Jami hisoblar',v:ACCS.length,c:'neu',n:''},
+    {l:'Faol',v:active.length,c:'pos',n:'Oborot bor'},
+    {l:'Jami Dt',v:fmt(ACCS.reduce((s,a)=>s+a.total_dt,0),true),c:'neu',n:''},
+    {l:'Jami Kt',v:fmt(ACCS.reduce((s,a)=>s+a.total_kt,0),true),c:'neu',n:''},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-note">${k.n}</div></div>`).join('');
+  buildAccTbl(ACCS);
 }
-
-function buildAccountTable(accounts) {
-  if(!accounts.length){
-    document.getElementById('acc-table').innerHTML='<p style="padding:24px;color:var(--muted);text-align:center">Ma\'lumot yuklanmadi</p>';return;
-  }
-  let html=`<table class="ft"><thead><tr>
-    <th>Kod</th><th>Hisob nomi</th><th>Proyektlar</th>
-    <th class="r">SN Дт</th><th class="r">SN Кт</th>
-    <th class="r">Oborot Дт</th><th class="r">Oborot Кт</th>
-    <th class="r">SK Дт</th><th class="r">SK Кт</th>
-    <th style="width:60px"></th></tr></thead><tbody>`;
-  accounts.forEach(acc=>{
-    const hasData=acc.total_dt||acc.total_kt||acc.sn_dt||acc.sn_kt;
-    const projNames=Object.entries(acc.projects).filter(([,p])=>p.dt||p.kt)
-      .map(([pid])=>`<span style="background:rgba(79,127,255,0.1);color:var(--accent);
-        padding:1px 6px;border-radius:4px;font-size:10px;margin-right:3px">${pid}</span>`).join('');
-    html+=`<tr data-code="${acc.code}" data-name="${acc.name.toLowerCase()}"
-      style="${!hasData?'opacity:0.35':''}">
-      <td style="font-family:var(--mono);font-size:11px;color:var(--cyan)">${acc.code}</td>
-      <td style="max-width:220px">${acc.name}</td>
-      <td>${projNames||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
-      <td class="${acc.sn_dt?'pos':''} r">${acc.sn_dt?fmt(acc.sn_dt):'—'}</td>
-      <td class="${acc.sn_kt?'neg':''} r">${acc.sn_kt?fmt(acc.sn_kt):'—'}</td>
-      <td class="r">${acc.total_dt?fmt(acc.total_dt):'—'}</td>
-      <td class="r">${acc.total_kt?fmt(acc.total_kt):'—'}</td>
-      <td class="${acc.sk_dt?'pos':''} r">${acc.sk_dt?fmt(acc.sk_dt):'—'}</td>
-      <td class="${acc.sk_kt?'neg':''} r">${acc.sk_kt?fmt(acc.sk_kt):'—'}</td>
-      <td><button onclick="showAccountDetail('${acc.code}')"
-        style="padding:4px 10px;background:var(--surface3);border:1px solid var(--border2);
-        border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer;white-space:nowrap">
-        ↗ Detail</button></td></tr>`;
+function buildAccTbl(accs){
+  if(!accs.length){document.getElementById('acc-tbl').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">Avval Hisoblar tabini oching</p>';return;}
+  let h=`<table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th class="r">SN Dt</th><th class="r">SN Kt</th><th class="r">Ob Dt</th><th class="r">Ob Kt</th><th class="r">SK Dt</th><th class="r">SK Kt</th><th></th></tr></thead><tbody>`;
+  accs.forEach(a=>{
+    const fade=!a.total_dt&&!a.total_kt&&!a.sn_dt&&!a.sn_kt;
+    h+=`<tr data-code="${a.code}" data-name="${a.name.toLowerCase()}" style="${fade?'opacity:0.35':''}">
+      <td class="code-c">${a.code}</td><td>${a.name}</td>
+      <td class="${a.sn_dt?'pos':''} r mono">${a.sn_dt?fmt(a.sn_dt):'—'}</td>
+      <td class="${a.sn_kt?'neg':''} r mono">${a.sn_kt?fmt(a.sn_kt):'—'}</td>
+      <td class="r mono">${a.total_dt?fmt(a.total_dt):'—'}</td>
+      <td class="r mono">${a.total_kt?fmt(a.total_kt):'—'}</td>
+      <td class="${a.sk_dt?'pos':''} r mono">${a.sk_dt?fmt(a.sk_dt):'—'}</td>
+      <td class="${a.sk_kt?'neg':''} r mono">${a.sk_kt?fmt(a.sk_kt):'—'}</td>
+      <td><button onclick="showAccDet('${a.code}')" class="btn" style="padding:3px 10px;font-size:10px">Detail</button></td>
+    </tr>`;
   });
-  document.getElementById('acc-table').innerHTML=html+'</tbody></table>';
+  document.getElementById('acc-tbl').innerHTML=h+'</tbody></table>';
+}
+function filterAcc(){
+  const q=document.getElementById('accSrch').value.toLowerCase();let v=0;
+  document.querySelectorAll('#acc-tbl tbody tr[data-code]').forEach(tr=>{const s=!q||tr.dataset.code.includes(q)||tr.dataset.name.includes(q);tr.style.display=s?'':'none';if(s)v++;});
+  document.getElementById('accB2').textContent=`${v}ta`;
 }
 
-function filterAccounts() {
-  const q=document.getElementById('accSearch').value.toLowerCase().trim();
-  const rows=document.querySelectorAll('#acc-table tbody tr[data-code]');
-  let vis=0;
-  rows.forEach(tr=>{
-    const show=!q||tr.dataset.code.includes(q)||tr.dataset.name.includes(q);
-    tr.style.display=show?'':'none'; if(show)vis++;
-  });
-  document.getElementById('acc-badge').textContent=`${vis} ta`;
-}
-
-// ═══════════════════════════════════════════════════════
-// HISOB DETAIL MODAL
-// ═══════════════════════════════════════════════════════
-async function showAccountDetail(code) {
-  const acc=ALL_ACCOUNTS.find(a=>a.code===code);
-  if(!acc)return;
-  document.getElementById('modalTitle').textContent=`${code} — ${acc.name}`;
-  document.getElementById('modalSub').textContent='Proyekt va oylar bo\'yicha taqsimot';
-  document.getElementById('modalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Yuklanmoqda...</div>';
-  document.getElementById('modalOverlay').classList.add('open');
-  const f=getFilters();
-  let detail=null;
-  try { detail=await callAPI({action:'account',code,firma:f.firma,year:f.year,project:f.project}); } catch(e) {}
-  if(!detail||detail.error) detail=buildDetailFromOSV(code,f);
-  renderAccountModal(detail,acc);
-}
-
-function buildDetailFromOSV(code,f) {
-  const MONTHS_K=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const MO_RU=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-  const osvData=DATA.osv||{};
-  const res={code,year:f.year,firma:f.firma,name:'',sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,
-    total_dt:0,total_kt:0,byMonth:{},byProject:{},firms:[],months_labels:MO_RU,months_keys:MONTHS_K};
-  MONTHS_K.forEach(mn=>{res.byMonth[mn]={dt:0,kt:0};});
-  Object.entries(osvData).forEach(([firmaId,osv])=>{
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&firmaId!==f.firma)return;
-    const mr=(osv.rows||[]).filter(r=>r.code===code&&(f.project==='ALL'||r.project===f.project));
-    if(!mr.length)return;
-    if(!res.name)res.name=mr[0].name;
-    const fe={firmaId,firmaName:osv.firmName||firmaId,projects:[]};
-    const pa={};
-    mr.forEach(row=>{
-      res.sn_dt+=row.sn_dt||0;res.sn_kt+=row.sn_kt||0;
-      res.sk_dt+=row.sk_dt||0;res.sk_kt+=row.sk_kt||0;
-      if(!pa[row.project])pa[row.project]={dt:0,kt:0,months:{}};
-      MONTHS_K.forEach(mn=>{
-        const d=row.months?.[mn]||{dt:0,kt:0};
-        res.byMonth[mn].dt+=d.dt;res.byMonth[mn].kt+=d.kt;
-        res.total_dt+=d.dt;res.total_kt+=d.kt;
-        if(!pa[row.project].months[mn])pa[row.project].months[mn]={dt:0,kt:0};
-        pa[row.project].months[mn].dt+=d.dt;pa[row.project].months[mn].kt+=d.kt;
-        pa[row.project].dt+=d.dt;pa[row.project].kt+=d.kt;
-      });
-    });
-    Object.entries(pa).forEach(([pid,pd])=>{
-      fe.projects.push({pid,pname:pid,total_dt:pd.dt,total_kt:pd.kt,months:pd.months});
-      if(!res.byProject[pid])res.byProject[pid]={name:pid,dt:0,kt:0};
-      res.byProject[pid].dt+=pd.dt;res.byProject[pid].kt+=pd.kt;
-    });
-    res.firms.push(fe);
-  });
-  return res;
-}
-
-function renderAccountModal(d) {
-  const MONTHS_K=d.months_keys||['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const MO_RU=d.months_labels||['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
-  const net_sn=(d.sn_dt||0)-(d.sn_kt||0), net_sk=(d.sk_dt||0)-(d.sk_kt||0);
-  let html=`<div class="modal-kpi-row">
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo boshlanish</div>
-      <div class="modal-kpi-val ${cls(net_sn)}">${fmt(net_sn)}</div></div>
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Оборот Дт / Кт</div>
-      <div class="modal-kpi-val" style="font-size:13px">
-        <span style="color:var(--accent)">${fmt(d.total_dt,true)}</span>
-        <span style="color:var(--muted)"> / </span>
-        <span style="color:var(--red)">${fmt(d.total_kt,true)}</span></div></div>
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo oxiri</div>
-      <div class="modal-kpi-val ${cls(net_sk)}">${fmt(net_sk)}</div></div>
-  </div>`;
-  const projEntries=Object.entries(d.byProject||{}).filter(([,p])=>p.dt||p.kt);
-  if(projEntries.length){
-    html+=`<div class="modal-section"><div class="modal-sec-title">📁 Proyektlar bo'yicha</div>
-      <table class="ft"><thead><tr><th>Proyekt</th><th class="r">Дт</th><th class="r">Кт</th><th class="r">Farq</th></tr></thead><tbody>`;
-    projEntries.forEach(([pid,p])=>{
-      const diff=p.dt-p.kt;
-      html+=`<tr><td><span style="background:rgba(79,127,255,0.1);color:var(--accent);
-        padding:2px 8px;border-radius:4px;font-size:11px">${p.name||pid}</span></td>
-        <td class="r" style="color:var(--accent)">${fmt(p.dt)}</td>
-        <td class="r" style="color:var(--red)">${fmt(p.kt)}</td>
-        <td class="${cls(diff)} r">${fmt(diff)}</td></tr>`;
-    });
-    html+='</tbody></table></div>';
-  }
-  const mWithData=MONTHS_K.filter(mn=>(d.byMonth[mn]?.dt||0)+(d.byMonth[mn]?.kt||0)>0);
-  if(mWithData.length){
-    const maxV=Math.max(...MONTHS_K.map(mn=>Math.max(d.byMonth[mn]?.dt||0,d.byMonth[mn]?.kt||0)),1);
-    html+=`<div class="modal-section"><div class="modal-sec-title">📅 Oylar bo'yicha</div>
-      <table class="ft"><thead><tr><th>Oy</th><th class="r">Дт</th><th class="r">Кт</th><th style="width:100px">Grafik</th></tr></thead><tbody>`;
-    MONTHS_K.forEach((mn,i)=>{
-      const dt=d.byMonth[mn]?.dt||0,kt=d.byMonth[mn]?.kt||0;
-      if(!dt&&!kt)return;
-      html+=`<tr><td>${MO_RU[i]}</td>
-        <td class="r" style="color:var(--accent)">${dt?fmt(dt):'—'}</td>
-        <td class="r" style="color:var(--red)">${kt?fmt(kt):'—'}</td>
-        <td><div style="display:flex;flex-direction:column;gap:2px">
-          ${dt?`<div style="height:5px;width:${Math.min(100,dt/maxV*90)}%;background:var(--accent);border-radius:2px;opacity:0.7"></div>`:''}
-          ${kt?`<div style="height:5px;width:${Math.min(100,kt/maxV*90)}%;background:var(--red);border-radius:2px;opacity:0.7"></div>`:''}
-        </div></td></tr>`;
-    });
-    html+='</tbody></table></div>';
-  }
-  if(!projEntries.length&&!mWithData.length)
-    html+='<p style="padding:20px;text-align:center;color:var(--muted)">Bu hisob bo\'yicha oborot yo\'q</p>';
-  document.getElementById('modalBody').innerHTML=html;
-}
-
-// ═══════════════════════════════════════════════════════
-// INDICATOR DETAIL MODAL
-// ═══════════════════════════════════════════════════════
-function showIndicatorDetail(key) {
-  const [group,name]=key.split('::');
-  const d=DATA.ind; if(!d)return;
-  const item=d.indicators?.find(g=>g.group===group)?.items?.find(i=>i.name===name);
-  if(!item)return;
-  const s=d.summary||{};
-  const DETAIL={
-    'Yalpi marja':{formula:'Gross = (Daromad − Tannarx) / Daromad × 100',interp:`Me'yor: 20-50%. Qiymat: ${item.value}`,good:'>25%',warn:'10-25%',bad:'<10%',kpis:[{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Yalpi foyda',val:fmt(s.gross,true)},{lbl:'Marja',val:item.value}]},
-    'EBIT marja':{formula:'EBIT / Daromad × 100',interp:`Operatsion samaradorlik. Me'yor: 10-20%. Qiymat: ${item.value}`,good:'>15%',warn:'5-15%',bad:'<5%',kpis:[{lbl:'EBIT',val:fmt(s.ebit,true)},{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Marja',val:item.value}]},
-    'Sof foyda marja':{formula:'Sof foyda / Daromad × 100',interp:`Me'yor: 5-15%. Qiymat: ${item.value}`,good:'>10%',warn:'3-10%',bad:'<3%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Daromad',val:fmt(s.revenue,true)},{lbl:'Marja',val:item.value}]},
-    'ROA':{formula:'Sof foyda / Jami aktiv × 100',interp:`Me'yor: 5-10%. Qiymat: ${item.value}`,good:'>8%',warn:'3-8%',bad:'<3%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'ROA',val:item.value}]},
-    'ROE':{formula:'Sof foyda / Kapital × 100',interp:`Me'yor: 10-20%. Qiymat: ${item.value}`,good:'>15%',warn:'5-15%',bad:'<5%',kpis:[{lbl:'Sof foyda',val:fmt(s.net,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'ROE',val:item.value}]},
-    'Joriy likvidlik':{formula:'Joriy aktiv / Joriy majburiyat',interp:`>1.5 = xavfsiz. <1 = qiyin. Qiymat: ${item.value}`,good:'>1.5',warn:'1-1.5',bad:'<1',kpis:[{lbl:'Joriy aktiv',val:'—'},{lbl:'Joriy maj.',val:'—'},{lbl:'Nisbat',val:item.value}]},
-    'Debt/Equity':{formula:'Jami qarz / Kapital',interp:`<1 = xavfsiz. >2 = yuqori xavf. Qiymat: ${item.value}`,good:'<0.5',warn:'0.5-1.5',bad:'>1.5',kpis:[{lbl:'Qarz',val:fmt(s.debt,true)},{lbl:'Kapital',val:fmt(s.capital,true)},{lbl:'D/E',val:item.value}]},
-    'Debt/EBITDA':{formula:'Jami qarz / EBITDA',interp:`<3 = yaxshi. Qiymat: ${item.value}`,good:'<2',warn:'2-3',bad:'>3',kpis:[{lbl:'Qarz',val:fmt(s.debt,true)},{lbl:'EBITDA',val:fmt(s.ebitda,true)},{lbl:'Nisbat',val:item.value}]},
-    'Foiz qoplash':{formula:'EBIT / Foiz xarajati',interp:`>2 = xavfsiz. Qiymat: ${item.value}`,good:'>3',warn:'1.5-3',bad:'<1.5',kpis:[{lbl:'EBIT',val:fmt(s.ebit,true)},{lbl:'Foiz',val:'—'},{lbl:'ICR',val:item.value}]},
-  };
-  const det=DETAIL[name]||{formula:item.note||'—',interp:item.value,good:'',warn:'',bad:'',kpis:[{lbl:'Qiymat',val:item.value},{lbl:'Tavsif',val:item.note||'—'},{lbl:'Guruh',val:group}]};
-  const vNum=parseFloat(item.value);
-  let gW=50,gC='gauge-ok';
-  if(!isNaN(vNum)){
-    if(item.value.includes('%')){gW=Math.min(100,Math.abs(vNum));gC=vNum>15?'gauge-ok':vNum>5?'gauge-warn':'gauge-bad';}
-    else{gW=Math.min(100,Math.abs(vNum)*20);gC=vNum<1?'gauge-ok':vNum<2?'gauge-warn':'gauge-bad';}
-  }
-  document.getElementById('modalTitle').textContent=name;
-  document.getElementById('modalSub').textContent=group+' ko\'rsatkichi';
-  document.getElementById('modalBody').innerHTML=`
-    <div class="modal-kpi-row">${det.kpis.map(k=>`<div class="modal-kpi">
-      <div class="modal-kpi-lbl">${k.lbl}</div><div class="modal-kpi-val">${k.val}</div></div>`).join('')}</div>
-    <div class="modal-section"><div class="modal-sec-title">Formula</div>
-      <div class="modal-formula">${det.formula}</div></div>
-    <div class="modal-section"><div class="modal-sec-title">Hozirgi holat</div>
-      <div class="modal-gauge">
-        <div class="gauge-label"><span style="color:var(--muted)">Past</span>
-          <span style="font-family:var(--mono);font-weight:700">${item.value}</span>
-          <span style="color:var(--muted)">Yuqori</span></div>
-        <div class="gauge-track"><div class="gauge-fill ${gC}" style="width:${gW}%"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted)">
-          <span>🔴 ${det.bad}</span><span>🟡 ${det.warn}</span><span>🟢 ${det.good}</span></div></div></div>
-    <div class="modal-section"><div class="modal-sec-title">Tahlil</div>
-      <div class="modal-interp">${det.interp}</div></div>`;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-// ═══════════════════════════════════════════════════════
-// KATEGORIYA DETAIL MODAL
-// ═══════════════════════════════════════════════════════
-const BAL_ACC_MAP={
+// CATEGORY DETAIL
+const BAL_MAP={
   'Uzoq muddatli aktivlar':['0100','0110','0130','0130.1','0130.2','0160'],
   'Amortizatsiya':['0200','0211','0230','0230.1','0230.2','0260'],
-  "Kapital qoyilmalar":['0800','0820','0820.2'],
+  'Kapital qoyilmalar':['0800','0820','0820.2'],
   'TMZ':['1000','1010','1030','1040','1050','1080'],
   'Tayyor mahsulot':['2800','2810'],
   'Debitorlar':['4000','4010','4200','4210','4300','4310','4315'],
-  'Soliq aktivlar':['4400','4410','4410.1','4410.3','4410.4','4410.10','4420','4420.1','4430','4450','4460','4490'],
+  'Soliq aktivlar':['4400','4410','4410.1','4410.3','4410.4','4420','4420.1','4430','4450','4460','4490'],
   'Ijtimoiy sugurta aktiv':['4500','4510','4510.1'],
   'Muassislar':['4600','4610'],
   'Qisqa muddatli invest.':['5800','5810','5810.1'],
@@ -1303,415 +636,299 @@ const BAL_ACC_MAP={
   'Uzoq muddatli qarz':['7800','7810'],
   'Kapital':['8300','8330','8700','8710'],
 };
-const PNL_ACC_MAP={
-  'revenue':['9000','9010','9010.1','9020','9020.1','9030','9030.1'],
-  'cost':['9100','9110','9110.1','9120','9120.1','9130','9130.1','2000','2010'],
-  'gross':['9000','9010','9020','9030','9100','9110','9120','9130'],
-  'opex':['9400','9420','9430'],
-  'ebit':['9000','9010','9020','9030','9100','9110','9120','9130','9400','9420','9430'],
-  'fin_income':['9500','9540'],'fin_expense':['9600','9610','9620'],
-  'tax':['9800','9810'],'net':['9900','9910'],
-};
-const CF_ACC_MAP={
-  'operating':['5000','5010','5100','5110','5700'],
-  'investing':['5730','5800','5810'],
-  'financing':['6800','6810','6820','7800','7810'],
-};
+const PNL_MAP={revenue:['9010','9020','9030'],cost:['9110','9120','9130','2010'],gross:['9010','9020','9030','9110','9120','9130'],opex:['9420','9430'],ebit:['9010','9020','9030','9110','9120','9130','9420','9430'],fin_income:['9540'],fin_expense:['9610','9620'],tax:['9810'],net:['9900','9910']};
+const CF_MAP={operating:['5010','5110','5700'],investing:['5810'],financing:['6810','6820','7810']};
 
-function showCategoryDetail(type,cat,label){
-  document.getElementById('modalTitle').textContent=label;
-  document.getElementById('modalSub').textContent='Hisob kodlari boyicha tafsilot';
-  document.getElementById('modalOverlay').classList.add('open');
-  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const MNS=['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
-  let html='';
+function showCat(type,cat,label){
+  openModal(label,'Hisob kodlari boyicha tafsilot');
+  function aCard(code,name,total,items){
+    // Subkonto bo'yicha guruhlash
+    // Agar subkonto bo'lsa — subkonto asosida guruhlaymiz
+    // Aks holda — proyekt asosida
+    const hasSub=items&&items.some(it=>it.subkonto&&it.subkonto.trim());
+    const byKey={};
+    (items||[]).forEach(it=>{
+      const key=hasSub?(it.subkonto||it.project||'—'):it.project||'—';
+      if(!byKey[key])byKey[key]={label:key,project:it.project,firma:it.firma,total:0,hasSub};
+      byKey[key].total+=it.val||0;
+    });
+    const rows2=Object.values(byKey).filter(x=>x.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
+    const grandTotal=rows2.reduce((s,r)=>s+r.total,0);
+    const maxV=Math.max(...rows2.map(r=>Math.abs(r.total)),1);
 
-  function card(code,name,total,items){
-    let h=`<div style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
-        <div><span style="font-family:var(--mono);color:var(--cyan);font-size:11px;margin-right:8px">${code}</span>
-          <span style="font-size:12px;font-weight:600">${name}</span></div>
-        <span class="${cls(total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(total)}</span>
-      </div>`;
-    (items||[]).forEach((it,i)=>{
-      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px 7px 28px;${i<items.length-1?'border-bottom:1px solid var(--border)':''}">
-        <div style="display:flex;gap:6px;align-items:center">
-          <span style="color:var(--muted);font-size:10px">${i+1}.</span>
-          <span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:10px">${it.project||'—'}</span>
-          <span style="color:var(--muted);font-size:10px">${it.firma||''}</span>
+    let h=`<div class="acc-card">
+      <div class="acc-ch" style="cursor:pointer" onclick="showAccDet('${code}')">
+        <div>
+          <span class="code-c" style="margin-right:8px">${code}</span>
+          <strong style="font-size:12px">${name}</strong>
         </div>
-        <span class="${cls(it.val||0)}" style="font-family:var(--mono);font-size:12px">${fmt(it.val||0)}</span>
+        <span class="${cls(total)} mono" style="font-size:15px;font-weight:700">${fmt(total)}</span>
+      </div>`;
+
+    rows2.forEach((it,i)=>{
+      const pct2=Math.min(100,Math.abs(it.total)/maxV*100);
+      h+=`<div class="acc-cr" style="flex-direction:column;align-items:stretch;padding:8px 14px 8px 28px;gap:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:6px;align-items:center;flex:1;min-width:0;overflow:hidden">
+            <span style="color:var(--muted2);font-size:10px;flex-shrink:0">${i+1}.</span>
+            <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
+            <span class="tag" style="flex-shrink:0;font-size:9px">${it.project||'—'}</span>
+          </div>
+          <span class="${cls(it.total)} mono" style="font-size:12px;font-weight:700;margin-left:8px;flex-shrink:0">${fmt(it.total)}</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:2px">
+          <div style="height:100%;width:${pct2}%;background:${it.total>=0?'var(--green)':'var(--red)'};border-radius:2px;opacity:0.7"></div>
+        </div>
       </div>`;
     });
     return h+'</div>';
   }
-
   function fromOSV(codes,valFn){
-    const byCode={};
-    Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
-      if(!osv||osv.error)return;
-      (osv.rows||[]).forEach(row=>{
-        if(!codes.includes(row.code))return;
-        const v=valFn(row);
-        if(!v)return;
-        if(!byCode[row.code])byCode[row.code]={code:row.code,name:row.name,items:[],total:0};
-        byCode[row.code].items.push({project:row.project||'—',firma:fId,val:v});
-        byCode[row.code].total+=v;
+    const by={};
+    Object.entries(DATA.osv||{}).forEach(([fId,ov])=>{
+      if(!ov||ov.error)return;
+      (ov.rows||[]).forEach(r=>{
+        if(!codes.includes(r.code))return;
+        const v=valFn(r);if(!v)return;
+        if(!by[r.code])by[r.code]={code:r.code,name:r.name,items:[],total:0};
+        by[r.code].items.push({
+          project:  r.project||'—',
+          firma:    fId,
+          val:      v,
+          subkonto: r.subkonto||'' // Apps Script v3 dan keladi
+        });
+        by[r.code].total+=v;
       });
     });
-    return Object.values(byCode).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
+    return Object.values(by).filter(g=>g.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
   }
-
+  let html='';
   if(type==='bal'){
-    const grps=fromOSV(BAL_ACC_MAP[cat]||[],row=>(row.sk_dt||0)-(row.sk_kt||0));
+    const grps=fromOSV(BAL_MAP[cat]||[],r=>(r.sk_dt||0)-(r.sk_kt||0));
+    html=grps.length?grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join(''):'<p style="padding:20px;text-align:center;color:var(--muted)">Malumot yoq. Hisoblar tabini oching.</p>';
+  }else if(type==='pnl'){
+    const grps=fromOSV(PNL_MAP[cat]||[],r=>{let t=0;MKS.forEach(mn=>{const d=r.months?.[mn]||{dt:0,kt:0};t+=d.dt-d.kt;});return t;});
     if(!grps.length){
-      html='<div style="padding:20px;text-align:center;color:var(--muted)"><p>Malumot yoq</p><p style="font-size:11px;margin-top:6px">Avval Hisoblar bolimini bir marta oching</p></div>';
-    } else {
-      html='<div class="modal-section">'+grps.map(g=>card(g.code,g.name,g.total,g.items)).join('')+'</div>';
-    }
-  }
-  else if(type==='pnl'){
-    const grps=fromOSV(PNL_ACC_MAP[cat]||[],row=>{
-      let t=0; MKS.forEach(mn=>{const d=row.months?.[mn]||{dt:0,kt:0};t+=d.dt-d.kt;}); return t;
-    });
-    if(!grps.length){
-      // PNL dan oylik grafik
       const row=DATA.pnl?.data?.find(x=>x.key===cat);
-      if(row){
-        const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
-        html='<div class="modal-section"><div class="modal-sec-title">Oylik korinish</div>';
-        MNS.forEach((mn,i)=>{
-          const mk=MKS[i],v=row.months?.[mk]||0; if(!v)return;
-          html+=`<div class="bar-row" style="margin-bottom:6px">
-            <div class="bar-lbl" style="min-width:56px;font-size:10px">${mn}</div>
-            <div class="bar-track"><div class="bar-fill ${v>=0?'bf-rev':'bf-net neg'}" style="width:${Math.min(100,Math.abs(v)/maxV*100)}%"></div></div>
+      if(row){const maxV=Math.max(...MKS.map(mk=>Math.abs(row.months?.[mk]||0)),1);
+        html='<div>';MNS.forEach((mn,i)=>{const mk=MKS[i],v=row.months?.[mk]||0;if(!v)return;
+          html+=`<div class="bar-row"><div class="bar-lbl">${mn.slice(0,3)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,Math.abs(v)/maxV*100)}%;background:${v>=0?'var(--green)':'var(--red)'}"></div></div>
             <div class="bar-val ${cls(v)}">${fmt(v,true)}</div></div>`;
         });
-        const tot=MKS.reduce((s,mk)=>s+(row.months?.[mk]||0),0);
-        html+=`<div style="text-align:right;padding:10px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(tot)}</div></div>`;
-      } else html='<p style="padding:20px;text-align:center;color:var(--muted)">Malumot yoq</p>';
-    } else {
-      html='<div class="modal-section">'+grps.map(g=>card(g.code,g.name,g.total,g.items)).join('')+'</div>';
-    }
-  }
-  else if(type==='cf'){
+        html+=`<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(row.total)}</div></div>`;
+      }else html='<p style="color:var(--muted);padding:20px;text-align:center">Malumot yoq</p>';
+    }else html=grps.map(g=>aCard(g.code,g.name,g.total,g.items)).join('');
+  }else if(type==='cf'){
     const sec=DATA.cf?.sections?.find(s=>s.key===cat);
-    if(sec?.accounts?.filter(a=>a.total).length){
-      html='<div class="modal-section">'+
-        sec.accounts.filter(a=>a.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total)).map(acc=>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin-bottom:8px;background:var(--surface2);border-radius:10px">
-            <div><span style="font-family:var(--mono);color:var(--cyan);font-size:11px;margin-right:8px">${acc.code}</span>
-              <span style="font-size:12px">${acc.name}</span></div>
-            <span class="${cls(acc.total)}" style="font-family:var(--mono);font-size:14px;font-weight:700">${fmt(acc.total)}</span>
-          </div>`).join('')+
-        `<div style="text-align:right;padding:8px 0;font-family:var(--mono);font-weight:700;color:var(--accent)">Jami: ${fmt(sec.total)}</div></div>`;
-    } else html='<p style="padding:24px;text-align:center;color:var(--muted)">Malumot yoq</p>';
+    html=sec?.accounts?.filter(a=>a.total).length?
+      sec.accounts.filter(a=>a.total).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total)).map(a=>`<div class="acc-ch" style="background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:8px;padding:10px 14px"><div><span class="code-c" style="margin-right:8px">${a.code}</span>${a.name}</div><span class="${cls(a.total)} mono" style="font-weight:700">${fmt(a.total)}</span></div>`).join('')+`<div style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--accent);padding:8px 0">Jami: ${fmt(sec.total)}</div>`
+      :'<p style="color:var(--muted);padding:20px;text-align:center">Malumot yoq</p>';
   }
-
-  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
+  document.getElementById('mBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
 }
 
-function showKpiDetail(key){
-  const MAP={pnl_rev:'revenue',pnl_gross:'gross',pnl_ebit:'ebit',pnl_net:'net',pnl_cost:'cost',
-    cf_op:'operating',cf_inv:'investing',cf_fin:'financing',cf_net:'net'};
-  const LBL={pnl_rev:'Daromad',pnl_gross:'Yalpi foyda',pnl_ebit:'EBIT',pnl_net:'Sof foyda',pnl_cost:'Xarajatlar',
-    cf_op:'Operatsion CF',cf_inv:'Investitsion CF',cf_fin:'Moliyaviy CF',cf_net:'Net CF'};
-  showCategoryDetail(key.startsWith('cf')?'cf':'pnl',MAP[key]||key,LBL[key]||key);
+// ACC DETAIL
+async function showAccDet(code){
+  const acc=ACCS.find(a=>a.code===code);
+  openModal(`${code} — ${acc?.name||code}`,'Proyekt va oylar boyicha tafsilot');
+  document.getElementById('mBody').innerHTML='<p style="padding:20px;text-align:center;color:var(--muted)">Yuklanmoqda...</p>';
+  const f=getF();let d=null;
+  try{d=await callAPI({action:'account',code,firma:f.firma,year:f.year,project:f.project});}catch{}
+  if(!d||d.error)d=buildLocDet(code,f);
+  renderAccMod(d);
 }
-
-// ═══════════════════════════════════════════════════════
-// DK SAHIFASI
-// ═══════════════════════════════════════════════════════
-function renderDK(){
-  const f=getFilters();
-  const osvData=DATA.osv||{};
-  document.getElementById('dk-sub').textContent=
-    `Debitor va Kreditor | ${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
-
-  const GROUPS=[
-    {label:'Xaridorlar va buyurtmachilar',deb:['4010','4000'],kred:['6310','6300']},
-    {label:'Yetkazib beruvchilar',deb:['4310','4300','4315'],kred:['6010','6000','6015']},
-    {label:'Moliyaviy yordam',deb:['5820','5800','5810'],kred:['6820','6800','6810','7810','7800']},
-    {label:'Boshqa debitor/kreditorlar',deb:['4200','4210','4600','4610'],kred:['6700','6710','6900','6920','6990']},
-  ];
-  const accData={};
-  Object.entries(osvData).forEach(([fId,osv])=>{
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&fId!==f.firma)return;
-    (osv.rows||[]).forEach(row=>{
-      if(f.project!=='ALL'&&row.project!==f.project)return;
-      const k=row.code+'|'+fId+'|'+(row.project||'');
-      if(!accData[k])accData[k]={code:row.code,name:row.name,project:row.project||'',firma:fId,sk_dt:0,sk_kt:0};
-      accData[k].sk_dt+=row.sk_dt||0; accData[k].sk_kt+=row.sk_kt||0;
-    });
-  });
-  const allRows=Object.values(accData);
-  let totD=0,totK=0,html='';
-
-  GROUPS.forEach(grp=>{
-    const dr=allRows.filter(r=>grp.deb.includes(r.code)&&(r.sk_dt||r.sk_kt));
-    const kr=allRows.filter(r=>grp.kred.includes(r.code)&&(r.sk_dt||r.sk_kt));
-    if(!dr.length&&!kr.length)return;
-    const gD=dr.reduce((s,r)=>s+Math.max(0,(r.sk_dt||0)-(r.sk_kt||0)),0);
-    const gK=kr.reduce((s,r)=>s+Math.max(0,(r.sk_kt||0)-(r.sk_dt||0)),0);
-    totD+=gD; totK+=gK;
-    const bRow=(rows)=>rows.map(r=>{
-      const net=(r.sk_dt||0)-(r.sk_kt||0);
-      return `<tr><td style="font-family:var(--mono);color:var(--cyan);font-size:11px">${r.code}</td>
-        <td>${r.name}</td>
-        <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:10px">${r.project||'—'}</span></td>
-        <td class="mu">${r.firma}</td>
-        <td class="${r.sk_dt?'pos':''} r">${r.sk_dt?fmt(r.sk_dt):'—'}</td>
-        <td class="${r.sk_kt?'neg':''} r">${r.sk_kt?fmt(r.sk_kt):'—'}</td>
-        <td class="${cls(net)} r"><b>${fmt(Math.abs(net))}</b></td></tr>`;
-    }).join('');
-    html+=`<div class="tw" style="margin-bottom:14px">
-      <div class="thead-row"><div class="ttitle">${grp.label}</div>
-        <div style="display:flex;gap:8px">
-          ${gD?`<span style="color:var(--green);font-family:var(--mono);font-size:11px">Deb: ${fmt(gD,true)}</span>`:''}
-          ${gK?`<span style="color:var(--red);font-family:var(--mono);font-size:11px">Kred: ${fmt(gK,true)}</span>`:''}
-        </div></div>
-      <table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th>Proyekt</th><th>Firma</th>
-        <th class="r">SK Dt</th><th class="r">SK Kt</th><th class="r">Saldo</th></tr></thead><tbody>
-      ${dr.length?`<tr><td colspan="7" style="background:rgba(34,197,94,0.06);color:var(--green);font-size:10px;font-weight:700;padding:5px 12px">DEBITORLAR</td></tr>${bRow(dr)}`:''}
-      ${kr.length?`<tr><td colspan="7" style="background:rgba(244,63,94,0.06);color:var(--red);font-size:10px;font-weight:700;padding:5px 12px">KREDITORLAR</td></tr>${bRow(kr)}`:''}
-      </tbody></table></div>`;
-  });
-
-  document.getElementById('dk-badge').textContent=`${allRows.length} ta`;
-  document.getElementById('dk-kpi').innerHTML=[
-    {label:'Jami debitorlar',val:fmt(totD,true),c:'pos',note:'Bizga qarzdorlar'},
-    {label:'Jami kreditorlar',val:fmt(totK,true),c:'neg',note:'Biz qarzdormiz'},
-    {label:'Sof pozitsiya',val:fmt(totD-totK,true),c:cls(totD-totK),note:'Deb - Kred'},
-    {label:'Jami',val:allRows.length,c:'neu',note:'OSV dan'},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div>
-    <div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
-  document.getElementById('dk-table').innerHTML=html||
-    '<p style="padding:24px;text-align:center;color:var(--muted)">OSV da 4xxx/6xxx hisoblar buyicha malumot yoq</p>';
-}
-
-// ═══════════════════════════════════════════════════════
-// HISOBLAR SAHIFASI
-// ═══════════════════════════════════════════════════════
-let ALL_ACCOUNTS=[];
-function renderAccounts(){
-  const f=getFilters();
-  document.getElementById('acc-sub').textContent=`${f.firma==='ALL'?'Barcha firmalar':f.firma} | ${f.year}`;
-  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  ALL_ACCOUNTS=[]; const accMap={};
-  Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&fId!==f.firma)return;
-    (osv.rows||[]).forEach(row=>{
-      if(f.project!=='ALL'&&row.project!==f.project)return;
-      if(!accMap[row.code])accMap[row.code]={code:row.code,name:row.name,sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,projects:{}};
-      const a=accMap[row.code];
-      a.sn_dt+=row.sn_dt||0;a.sn_kt+=row.sn_kt||0;
-      a.sk_dt+=row.sk_dt||0;a.sk_kt+=row.sk_kt||0;
-      if(!a.projects[row.project])a.projects[row.project]={dt:0,kt:0};
-      MKS.forEach(mn=>{const d=row.months?.[mn]||{dt:0,kt:0};a.total_dt+=d.dt;a.total_kt+=d.kt;a.projects[row.project].dt+=d.dt;a.projects[row.project].kt+=d.kt;});
-    });
-  });
-  ALL_ACCOUNTS=Object.values(accMap);
-  const withData=ALL_ACCOUNTS.filter(a=>a.total_dt||a.total_kt||a.sn_dt||a.sn_kt||a.sk_dt||a.sk_kt);
-  document.getElementById('acc-kpi').innerHTML=[
-    {label:'Jami hisoblar',val:ALL_ACCOUNTS.length,c:'neu',note:'Barcha scyotlar'},
-    {label:'Faol',val:withData.length,c:'pos',note:'Oborot bor'},
-    {label:'Jami Dt',val:fmt(ALL_ACCOUNTS.reduce((s,a)=>s+a.total_dt,0),true),c:'neu',note:''},
-    {label:'Jami Kt',val:fmt(ALL_ACCOUNTS.reduce((s,a)=>s+a.total_kt,0),true),c:'neu',note:''},
-  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.c}">${k.val}</div><div class="kpi-note">${k.note}</div></div>`).join('');
-  document.getElementById('acc-badge').textContent=`${ALL_ACCOUNTS.length} ta`;
-  if(!ALL_ACCOUNTS.length){document.getElementById('acc-table').innerHTML='<p style="padding:24px;text-align:center;color:var(--muted)">Malumot yoq</p>';return;}
-  let html=`<table class="ft"><thead><tr><th>Kod</th><th>Nomi</th><th>Proyektlar</th>
-    <th class="r">SN Dt</th><th class="r">SN Kt</th><th class="r">Ob Dt</th><th class="r">Ob Kt</th>
-    <th class="r">SK Dt</th><th class="r">SK Kt</th><th style="width:60px"></th></tr></thead><tbody>`;
-  ALL_ACCOUNTS.forEach(acc=>{
-    const proj=Object.entries(acc.projects).filter(([,p])=>p.dt||p.kt)
-      .map(([pid])=>`<span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:1px 5px;border-radius:4px;font-size:10px;margin-right:2px">${pid}</span>`).join('');
-    html+=`<tr data-code="${acc.code}" data-name="${acc.name.toLowerCase()}" style="${!acc.total_dt&&!acc.total_kt&&!acc.sn_dt&&!acc.sn_kt?'opacity:0.35':''}">
-      <td style="font-family:var(--mono);font-size:11px;color:var(--cyan)">${acc.code}</td>
-      <td>${acc.name}</td><td>${proj||'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
-      <td class="${acc.sn_dt?'pos':''} r">${acc.sn_dt?fmt(acc.sn_dt):'—'}</td>
-      <td class="${acc.sn_kt?'neg':''} r">${acc.sn_kt?fmt(acc.sn_kt):'—'}</td>
-      <td class="r">${acc.total_dt?fmt(acc.total_dt):'—'}</td>
-      <td class="r">${acc.total_kt?fmt(acc.total_kt):'—'}</td>
-      <td class="${acc.sk_dt?'pos':''} r">${acc.sk_dt?fmt(acc.sk_dt):'—'}</td>
-      <td class="${acc.sk_kt?'neg':''} r">${acc.sk_kt?fmt(acc.sk_kt):'—'}</td>
-      <td><button onclick="showAccDetail('${acc.code}')" style="padding:3px 9px;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer">Detail</button></td>
-    </tr>`;
-  });
-  document.getElementById('acc-table').innerHTML=html+'</tbody></table>';
-}
-
-function filterAccounts(){
-  const q=document.getElementById('accSearch').value.toLowerCase().trim();
-  let v=0;
-  document.querySelectorAll('#acc-table tbody tr[data-code]').forEach(tr=>{
-    const s=!q||tr.dataset.code.includes(q)||tr.dataset.name.includes(q);
-    tr.style.display=s?'':'none'; if(s)v++;
-  });
-  document.getElementById('acc-badge').textContent=`${v} ta`;
-}
-
-async function showAccDetail(code){
-  const acc=ALL_ACCOUNTS.find(a=>a.code===code); if(!acc)return;
-  document.getElementById('modalTitle').textContent=`${code} — ${acc.name}`;
-  document.getElementById('modalSub').textContent='Proyekt va oylar boyicha';
-  document.getElementById('modalOverlay').classList.add('open');
-  document.getElementById('modalBody').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Yuklanmoqda...</div>';
-  const f=getFilters();
-  let d=null;
-  try{d=await callAPI({action:'account',code,firma:f.firma,year:f.year,project:f.project});}catch(e){}
-  if(!d||d.error) d=buildAccDetail(code,f);
-  renderAccModal(d);
-}
-
-function buildAccDetail(code,f){
-  const MKS=['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const r={code,name:'',sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,
-    byMonth:{},byProject:{},firms:[],
-    months_labels:['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'],
-    months_keys:MKS};
+function buildLocDet(code,f){
+  const r={code,name:'',sn_dt:0,sn_kt:0,sk_dt:0,sk_kt:0,total_dt:0,total_kt:0,byMonth:{},byProject:{},months_keys:MKS,months_labels:MNS};
   MKS.forEach(mn=>{r.byMonth[mn]={dt:0,kt:0};});
-  Object.entries(DATA.osv||{}).forEach(([fId,osv])=>{
-    if(!osv||osv.error)return;
-    if(f.firma!=='ALL'&&fId!==f.firma)return;
-    const rows=(osv.rows||[]).filter(row=>row.code===code&&(f.project==='ALL'||row.project===f.project));
-    if(!rows.length)return;
-    if(!r.name)r.name=rows[0].name;
-    const fe={firmaId:fId,firmaName:osv.firmName||fId,projects:[]};
-    const pa={};
-    rows.forEach(row=>{
-      r.sn_dt+=row.sn_dt||0;r.sn_kt+=row.sn_kt||0;r.sk_dt+=row.sk_dt||0;r.sk_kt+=row.sk_kt||0;
-      if(!pa[row.project])pa[row.project]={dt:0,kt:0,months:{}};
-      MKS.forEach(mn=>{
-        const dd=row.months?.[mn]||{dt:0,kt:0};
-        r.byMonth[mn].dt+=dd.dt;r.byMonth[mn].kt+=dd.kt;r.total_dt+=dd.dt;r.total_kt+=dd.kt;
-        if(!pa[row.project].months[mn])pa[row.project].months[mn]={dt:0,kt:0};
-        pa[row.project].months[mn].dt+=dd.dt;pa[row.project].months[mn].kt+=dd.kt;
-        pa[row.project].dt+=dd.dt;pa[row.project].kt+=dd.kt;
-      });
+  Object.entries(DATA.osv||{}).forEach(([fId,ov])=>{
+    if(!ov||ov.error)return;if(f.firma!=='ALL'&&fId!==f.firma)return;
+    const rows=(ov.rows||[]).filter(x=>x.code===code&&(f.project==='ALL'||x.project===f.project));
+    if(!rows.length)return;if(!r.name)r.name=rows[0].name;
+    rows.forEach(x=>{
+      r.sn_dt+=x.sn_dt||0;r.sn_kt+=x.sn_kt||0;r.sk_dt+=x.sk_dt||0;r.sk_kt+=x.sk_kt||0;
+      if(!r.byProject[x.project])r.byProject[x.project]={name:x.project,dt:0,kt:0};
+      MKS.forEach(mn=>{const dd=x.months?.[mn]||{dt:0,kt:0};r.byMonth[mn].dt+=dd.dt;r.byMonth[mn].kt+=dd.kt;r.total_dt+=dd.dt;r.total_kt+=dd.kt;r.byProject[x.project].dt+=dd.dt;r.byProject[x.project].kt+=dd.kt;});
     });
-    Object.entries(pa).forEach(([pid,pd])=>{
-      fe.projects.push({pid,pname:pid,total_dt:pd.dt,total_kt:pd.kt});
-      if(!r.byProject[pid])r.byProject[pid]={name:pid,dt:0,kt:0};
-      r.byProject[pid].dt+=pd.dt;r.byProject[pid].kt+=pd.kt;
-    });
-    r.firms.push(fe);
   });
   return r;
 }
-
-function renderAccModal(d){
-  const MKS=d.months_keys||['yanv','fevr','mart','apr','may','iyun','iyul','avg','sent','okt','noy','dek'];
-  const MNS=d.months_labels||['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
-  const netSn=(d.sn_dt||0)-(d.sn_kt||0),netSk=(d.sk_dt||0)-(d.sk_kt||0);
-  let html=`<div class="modal-kpi-row">
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo bosh</div><div class="modal-kpi-val ${cls(netSn)}">${fmt(netSn)}</div></div>
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Ob Dt / Kt</div>
-      <div class="modal-kpi-val" style="font-size:13px"><span style="color:var(--accent)">${fmt(d.total_dt,true)}</span> / <span style="color:var(--red)">${fmt(d.total_kt,true)}</span></div></div>
-    <div class="modal-kpi"><div class="modal-kpi-lbl">Saldo oxiri</div><div class="modal-kpi-val ${cls(netSk)}">${fmt(netSk)}</div></div>
+function renderAccMod(d){
+  const ns=(d.sn_dt||0)-(d.sn_kt||0),sk=(d.sk_dt||0)-(d.sk_kt||0);
+  let html=`<div class="m-kpi">
+    <div class="m-kpi-c"><div class="m-kpi-l">Saldo bosh</div><div class="m-kpi-v ${cls(ns)}">${fmt(ns)}</div></div>
+    <div class="m-kpi-c"><div class="m-kpi-l">Ob Dt / Kt</div><div class="m-kpi-v" style="font-size:13px"><span style="color:var(--green)">${fmt(d.total_dt,true)}</span> / <span style="color:var(--red)">${fmt(d.total_kt,true)}</span></div></div>
+    <div class="m-kpi-c"><div class="m-kpi-l">Saldo oxiri</div><div class="m-kpi-v ${cls(sk)}">${fmt(sk)}</div></div>
   </div>`;
   const pe=Object.entries(d.byProject||{}).filter(([,p])=>p.dt||p.kt);
   if(pe.length){
-    html+=`<div class="modal-section"><div class="modal-sec-title">Proyektlar boyicha</div>
-      <table class="ft"><thead><tr><th>Proyekt</th><th class="r">Dt</th><th class="r">Kt</th><th class="r">Farq</th></tr></thead><tbody>`;
-    pe.forEach(([pid,p])=>{const d2=p.dt-p.kt;html+=`<tr>
-      <td><span style="background:rgba(79,127,255,0.1);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px">${p.name||pid}</span></td>
-      <td class="r" style="color:var(--accent)">${fmt(p.dt)}</td>
-      <td class="r" style="color:var(--red)">${fmt(p.kt)}</td>
-      <td class="${cls(d2)} r">${fmt(d2)}</td></tr>`;});
+    html+=`<div class="m-sec"><div class="m-sec-t">Proyektlar</div><table class="ft"><thead><tr><th>Proyekt</th><th class="r">Dt</th><th class="r">Kt</th><th class="r">Farq</th></tr></thead><tbody>`;
+    pe.forEach(([pid,p])=>{const df=p.dt-p.kt;html+=`<tr><td><span class="tag">${p.name||pid}</span></td><td class="r mono" style="color:var(--green)">${fmt(p.dt)}</td><td class="r mono" style="color:var(--red)">${fmt(p.kt)}</td><td class="${cls(df)} r mono">${fmt(df)}</td></tr>`;});
     html+='</tbody></table></div>';
   }
-  const mw=MKS.filter(mn=>(d.byMonth[mn]?.dt||0)+(d.byMonth[mn]?.kt||0)>0);
+  const mk=d.months_keys||MKS,mn=d.months_labels||MNS;
+  const mw=mk.filter(m=>(d.byMonth[m]?.dt||0)+(d.byMonth[m]?.kt||0)>0);
   if(mw.length){
-    const maxV=Math.max(...MKS.map(mn=>Math.max(d.byMonth[mn]?.dt||0,d.byMonth[mn]?.kt||0)),1);
-    html+=`<div class="modal-section"><div class="modal-sec-title">Oylar boyicha</div>
-      <table class="ft"><thead><tr><th>Oy</th><th class="r">Dt</th><th class="r">Kt</th><th style="width:90px">Grafik</th></tr></thead><tbody>`;
-    MKS.forEach((mn,i)=>{
-      const dt=d.byMonth[mn]?.dt||0,kt=d.byMonth[mn]?.kt||0;if(!dt&&!kt)return;
-      html+=`<tr><td>${MNS[i]}</td>
-        <td class="r" style="color:var(--accent)">${dt?fmt(dt):'—'}</td>
-        <td class="r" style="color:var(--red)">${kt?fmt(kt):'—'}</td>
-        <td><div style="display:flex;flex-direction:column;gap:2px">
-          ${dt?`<div style="height:5px;width:${Math.min(100,dt/maxV*90)}%;background:var(--accent);border-radius:2px;opacity:0.7"></div>`:''}
-          ${kt?`<div style="height:5px;width:${Math.min(100,kt/maxV*90)}%;background:var(--red);border-radius:2px;opacity:0.7"></div>`:''}
-        </div></td></tr>`;
+    const maxV=Math.max(...mk.map(m=>Math.max(d.byMonth[m]?.dt||0,d.byMonth[m]?.kt||0)),1);
+    html+=`<div class="m-sec"><div class="m-sec-t">Oylar</div>`;
+    mk.forEach((m,i)=>{
+      const dt=d.byMonth[m]?.dt||0,kt=d.byMonth[m]?.kt||0;if(!dt&&!kt)return;
+      html+=`<div class="bar-row" style="margin-bottom:10px;align-items:flex-start">
+        <div class="bar-lbl">${mn[i].slice(0,3)}</div>
+        <div style="flex:1">
+          ${dt?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><div style="width:${Math.min(100,dt/maxV*100)}%;height:6px;background:var(--green);border-radius:3px;max-width:180px"></div><span class="pos mono" style="font-size:10px">${fmt(dt,true)}</span></div>`:''}
+          ${kt?`<div style="display:flex;align-items:center;gap:6px"><div style="width:${Math.min(100,kt/maxV*100)}%;height:6px;background:var(--red);border-radius:3px;max-width:180px"></div><span class="neg mono" style="font-size:10px">${fmt(kt,true)}</span></div>`:''}
+        </div>
+      </div>`;
     });
-    html+='</tbody></table></div>';
+    html+='</div>';
   }
-  document.getElementById('modalBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
+  document.getElementById('mBody').innerHTML=html||'<p style="color:var(--muted);padding:20px">Tafsilot yoq</p>';
 }
 
-
-function closeModal(e) {
-  if(!e||e.target===document.getElementById('modalOverlay'))
-    document.getElementById('modalOverlay').classList.remove('open');
+// IND DETAIL
+function showInd(group,name){
+  const d=DATA.ind;if(!d)return;
+  const item=d.indicators?.find(g=>g.group===group)?.items?.find(i=>i.name===name);if(!item)return;
+  const s=d.summary||{};
+  openModal(name,group);
+  const DET={
+    'Yalpi marja':{f:'Gross/Daromad x 100',kpis:[{l:'Daromad',v:fmt(s.revenue,true)},{l:'Yalpi foyda',v:fmt(s.gross,true)},{l:'Marja',v:item.value}]},
+    'EBIT marja':{f:'EBIT/Daromad x 100',kpis:[{l:'EBIT',v:fmt(s.ebit,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
+    'Sof foyda marja':{f:'Net/Daromad x 100',kpis:[{l:'Sof foyda',v:fmt(s.net,true)},{l:'Daromad',v:fmt(s.revenue,true)},{l:'Marja',v:item.value}]},
+    'ROA':{f:'Net/Aktiv x 100',kpis:[{l:'Net',v:fmt(s.net,true)},{l:'Aktiv',v:''},{l:'ROA',v:item.value}]},
+    'ROE':{f:'Net/Kapital x 100',kpis:[{l:'Net',v:fmt(s.net,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'ROE',v:item.value}]},
+    'Debt/Equity':{f:'Qarz/Kapital',kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'Kapital',v:fmt(s.capital,true)},{l:'D/E',v:item.value}]},
+    'Debt/EBITDA':{f:'Qarz/EBITDA',kpis:[{l:'Qarz',v:fmt(s.debt,true)},{l:'EBITDA',v:fmt(s.ebitda,true)},{l:'D/EBITDA',v:item.value}]},
+  };
+  const det=DET[name]||{f:item.note||'—',kpis:[{l:'Qiymat',v:item.value},{l:'Tavsif',v:item.note||'—'},{l:'Guruh',v:group}]};
+  document.getElementById('mBody').innerHTML=`
+    <div class="m-kpi">${det.kpis.map(k=>`<div class="m-kpi-c"><div class="m-kpi-l">${k.l}</div><div class="m-kpi-v">${k.v}</div></div>`).join('')}</div>
+    <div class="m-sec"><div class="m-sec-t">Formula</div><div style="background:var(--bg3);padding:12px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:12px">${det.f}</div></div>
+    <div class="m-sec"><div class="m-sec-t">Talqin</div><div style="font-size:12px;line-height:1.6">${item.note||'—'}</div></div>`;
 }
 
-// ═══════════════════════════════════════════════════════
-// MOBIL HAMBURGER
-// ═══════════════════════════════════════════════════════
-function toggleFilterDrawer() {
-  const d=document.getElementById('filterDrawer');
-  const h=document.getElementById('hamburger');
-  const open=d.classList.toggle('open');
-  h.classList.toggle('open',open);
+// MODAL
+function openModal(title,sub){
+  document.getElementById('mTitle').textContent=title;
+  document.getElementById('mSub').textContent=sub||'';
+  document.getElementById('mBody').innerHTML='';
+  document.getElementById('overlay').classList.add('open');
 }
-function syncFilter(fId,tId) {
-  const val=document.getElementById(fId)?.value;
-  const t=document.getElementById(tId);
-  if(t&&val!==undefined) t.value=val;
-  applyFilter();
-}
-document.addEventListener('click',e=>{
-  const d=document.getElementById('filterDrawer');
-  const h=document.getElementById('hamburger');
-  if(d?.classList.contains('open')&&!d.contains(e.target)&&!h?.contains(e.target)){
-    d.classList.remove('open');h?.classList.remove('open');
-  }
-});
+function closeModal(e){if(!e||e.target===document.getElementById('overlay'))document.getElementById('overlay').classList.remove('open');}
 
-// ═══════════════════════════════════════════════════════
-// ERROR HELPERS
-// ═══════════════════════════════════════════════════════
-function showErrIn(id,msg) {
-  const el=document.getElementById(id);
-  if(el)el.innerHTML=`<div class="err-box" style="margin:16px">❌ ${msg||'Yuklanmadi'}</div>`;
-}
-function showErr(msg) {
-  document.getElementById('main').innerHTML=`<div class="err-box" style="margin:24px">❌ ${msg}</div>`;
-}
-function showSetupGuide(errMsg) {
-  document.getElementById('main').innerHTML=`
-    <div style="max-width:640px;margin:0 auto">
-      <div class="err-box" style="margin-bottom:20px">⚠️ ${errMsg}</div>
-      <div class="tw"><div class="thead-row"><div class="ttitle">🛠 O'rnatish qo'llanmasi</div></div>
-      <div style="padding:20px">
-        ${['Google Sheets ni yuklang','Extensions → Apps Script',
-           'Code_AppScript_v2.gs ni yapıştiring va saqlang',
-           'Deploy → New deployment → Web App → Anyone → Deploy',
-           'URL + ?action=ping → {"ok":true} bo\'lsa tayyor'].map((s,i)=>
-          `<div style="display:flex;gap:12px;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px">
-            <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:white;
-              display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${i+1}</div>
-            <div style="font-size:12px">${s}</div></div>`).join('')}
-        <button class="rf-btn" style="margin-top:8px" onclick="loadAll(true)">↻ Qayta urinish</button>
-      </div></div></div>`;
-}
+// DRAWER
+function openDr(){document.getElementById('drawer').classList.add('open');buildMobNav();}
+function closeDr(){document.getElementById('drawer').classList.remove('open');}
+function closeDrOut(e){if(e.target===document.getElementById('drawer'))closeDr();}
 
-// ═══════════════════════════════════════════════════════
+// SETUP / ERROR
+function showSetup(errMsg){
+  document.getElementById('mainEl').innerHTML=`
+    <div class="setup">
+      <div class="setup-err"><span>⚠️</span><div>${errMsg}</div></div>
+      <div class="setup-card">
+        <div class="setup-title">Tekshirish va ozrnatish</div>
+        <div class="setup-body">
+          <div class="api-box">
+            <div style="font-size:11px;color:var(--muted)">API URL:</div>
+            <div class="api-url">${API}?action=ping</div>
+          </div>
+          ${['Apps Script da Code_AppScript_v3.gs ni yapistiring','Deploy Manage deployments New version Deploy','Ruxsat bering Execute as: Me Who: Anyone','Ping test: URL + ?action=ping — {"ok":true} bolishi kerak','index.html ni GitHub ga yuklang'].map((s,i)=>`<div class="step"><div class="step-n">${i+1}</div><div style="font-size:12px">${s}</div></div>`).join('')}
+          <div class="setup-btns">
+            <button class="btn btn-p" onclick="loadAll(true)">Qayta urinish</button>
+            <button class="btn" onclick="window.open(API+'?action=ping','_blank')">Ping test</button>
+            <button class="btn" onclick="window.open(API+'?action=all&firma=ALL&year=2026','_blank')">All test</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+function showErr(id,msg){const el=document.getElementById(id);if(el)el.innerHTML=`<div style="padding:20px;color:var(--red);text-align:center">xato: ${msg||'Yuklanmadi'}</div>`;}
+
 // KEYBOARD
-// ═══════════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeModal();
   if((e.ctrlKey||e.metaKey)&&e.key==='r'){e.preventDefault();loadAll(true);}
 });
 
-// ═══════════════════════════════════════════════════════
 // INIT
+initTheme();initApp();
 // ═══════════════════════════════════════════════════════
-loadAll();
+// XAVFSIZLIK — PAROL
+// ═══════════════════════════════════════════════════════
+// Parollarni o'zgartirish: quyidagi hashlarni yangilang
+// Hash hisoblash: https://emn178.github.io/online-tools/sha256.html
+// QSH2026  → hash
+// Admin2026 → hash
+
+const PASSWORDS = {
+  // format: 'parol_nomi': 'sha256_hash'
+  // Hozirgi parollar: QSH2026 va Admin2026
+  'qsh2026':   'c7a58a82b1cad94fc682d0ffac58058cdcf691c20de32f70a135eb03b4be1f81',
+  'admin2026': '6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6',
+};
+
+// Real SHA-256 hisoblash
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// Sessiya davomiyligi (soat)
+const SESSION_HOURS = 8;
+const SESS_KEY = 'fd_session';
+
+function checkSession(){
+  try{
+    const s = JSON.parse(sessionStorage.getItem(SESS_KEY)||'null');
+    if(!s)return false;
+    if(Date.now() - s.time > SESSION_HOURS * 3600 * 1000){
+      sessionStorage.removeItem(SESS_KEY); return false;
+    }
+    return true;
+  }catch{return false;}
+}
+
+function saveSession(){
+  try{sessionStorage.setItem(SESS_KEY, JSON.stringify({time:Date.now()}));}catch{}
+}
+
+async function doLogin(){
+  const pw = document.getElementById('pwInput').value.trim();
+  const err = document.getElementById('loginErr');
+  if(!pw){err.textContent='Parolni kiriting';return;}
+  
+  err.textContent='';
+  const hash = await sha256(pw.toLowerCase());
+  
+  // Barcha parollar bilan solishtirish
+  const isValid = Object.values(PASSWORDS).includes(hash);
+  
+  if(isValid){
+    saveSession();
+    document.getElementById('login').classList.add('hidden');
+    // Init — faqat login o'tgandan keyin
+    buildMobNav();
+    loadAll();
+  } else {
+    err.textContent = 'Parol notogri';
+    document.getElementById('pwInput').value='';
+    document.getElementById('login').classList.add('shake');
+    setTimeout(()=>document.getElementById('login').classList.remove('shake'),400);
+  }
+}
+
+function initApp(){
+  if(checkSession()){
+    document.getElementById('login').classList.add('hidden');
+    buildMobNav();
+    loadAll();
+  } else {
+    setTimeout(()=>document.getElementById('pwInput')?.focus(), 100);
+  }
+}
+
 </script>
 </body>
 </html>
